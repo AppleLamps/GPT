@@ -256,6 +256,10 @@ async function handleSendMessage() {
     const selectedModelSetting = state.getSelectedModelSetting();
     let useWebSearch = state.getIsWebSearchEnabled();
     const isImageGenMode = state.getIsImageGenerationMode();
+    // +++ Determine the effective model early on +++
+    const activeGpt = state.getActiveCustomGptConfig();
+    const effectiveModel = activeGpt ? 'gpt-4o' : selectedModelSetting; // Determine effective model for UI reset logic
+
     // ... (rest of validation) ...
     if (isImageGenMode) { /* ... */ }
     else if (!messageText && !imageToSend && files.length === 0) { /* ... */ return; }
@@ -302,9 +306,22 @@ async function handleSendMessage() {
     await api.routeApiCall(selectedModelSetting, useWebSearch);
 
     // --- Reset UI State ---
-    // ... (keep existing reset code for imageGen, search) ...
-    if (isImageGenMode) { /* ... */ }
-    else if (useWebSearch && effectiveModel === 'gpt-4o') { /* ... */ } // Use effectiveModel if needed
+    // Reset image gen mode button/state if needed
+    if (isImageGenMode && imageGenButton) {
+        imageGenButton.classList.remove('active');
+        state.setImageGenerationMode(false);
+        if (messageInputElement) {
+            // Restore placeholder based on the *effective* model determined earlier
+            const modelName = effectiveModel.startsWith('gemini-') ? "Gemini" : "ChatGPT";
+            messageInputElement.placeholder = `Message ${modelName}`;
+        }
+    }
+    // Reset web search button/state only if it was enabled *and* the effective model was compatible (gpt-4o)
+    // Use the effectiveModel calculated at the start of the function
+    else if (useWebSearch && effectiveModel === 'gpt-4o' && searchButton) {
+        searchButton.classList.remove('active');
+        state.setIsWebSearchEnabled(false); // Reset state as well
+    }
 }
 
 

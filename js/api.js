@@ -11,6 +11,8 @@ import { resetParser, accumulateChunkAndGetEscaped, parseFinalHtml, getAccumulat
 import { escapeHTML } from './utils.js';
 // Import Gemini API functions
 import { fetchGeminiStream, buildGeminiPayloadContents, buildGeminiSystemInstruction, buildGeminiGenerationConfig } from './geminiapi.js';
+// Import the new rendering function
+import { renderImprovedWebSearchResults } from './components/webSearch.js';
 
 // API Endpoints
 const CHAT_COMPLETIONS_API_URL = 'https://api.openai.com/v1/chat/completions';
@@ -695,13 +697,13 @@ function processResponsesEvent(line, aiMessageElement, lastItemId, streamHasCont
             else if (eventType === 'response.tool_use.output' && parsed.tool_use?.type === 'web_search_preview') { console.log("Web search finished."); showTypingIndicator("Thinking..."); } // Change back to thinking
             else if (eventType === 'response.tool_use.failed' && parsed.tool_use?.type === 'web_search_preview') { console.error("Web search failed:", parsed.error); showTypingIndicator("Thinking..."); showNotification("Web search failed to complete.", "warning"); }
             else if (eventType === 'response.output_item.added' && parsed.item?.type === 'message') {
-                // Create container as soon as the message item is added
+                // Create container but DON'T remove the typing indicator yet
                 if (!updatedAiMessageElement) {
-                    removeTypingIndicator(); // Ensure indicator is gone
                     updatedAiMessageElement = createAIMessageContainer();
                     updatedLastItemId = parsed.item?.id;
                     if (!updatedAiMessageElement) throw new Error("UI container creation failed.");
                     console.log("AI message container created for item ID:", updatedLastItemId);
+                    // Don't remove typing indicator here
                 }
             }
             else if (eventType === 'response.output_text.delta' && parsed.item_id === updatedLastItemId) {
@@ -710,10 +712,15 @@ function processResponsesEvent(line, aiMessageElement, lastItemId, streamHasCont
                     if (!updatedAiMessageElement) {
                         // Defensive: If somehow delta arrives before item.added event processed
                         console.error("Received text delta but AI message element doesn't exist!");
-                        removeTypingIndicator();
                         updatedAiMessageElement = createAIMessageContainer();
                         if (!updatedAiMessageElement) throw new Error("UI container creation failed (defensive).");
                     }
+                    
+                    // Only when we have actual content, remove the typing indicator
+                    if (parsed.delta && !updatedStreamHasContent) {
+                        removeTypingIndicator(); // Only remove indicator when we have actual content
+                    }
+                    
                     if (parsed.delta) { // Only mark as contentful if non-empty
                         updatedStreamHasContent = true;
                         const escapedChunk = accumulateChunkAndGetEscaped(parsed.delta);
@@ -731,6 +738,13 @@ function processResponsesEvent(line, aiMessageElement, lastItemId, streamHasCont
                 if (eventType === 'response.failed') { showNotification(`AI response failed: ${parsed.error?.message || 'Unknown reason'}`, 'error'); }
                 else if (eventType === 'response.incomplete') { showNotification(`AI response may be incomplete: ${parsed.reason || 'Unknown reason'}`, 'warning'); }
             }
+            // Add a condition to handle web search results
+            if (eventType === 'response.web_search_results' || 
+                (eventType === 'response.tool_use.output' && 
+                 parsed.tool_use?.type === 'web_search')) {
+                
+                processWebSearchResults(parsed.data || parsed.tool_use.output, updatedAiMessageElement);
+            }
             return { aiMessageElement: updatedAiMessageElement, lastItemId: updatedLastItemId, streamHasContent: updatedStreamHasContent, finalResponseId, streamEnded: isStreamEndEvent };
         } catch (e) {
             removeTypingIndicator(); console.error('Error parsing Responses API stream chunk or handling event:', data, e);
@@ -739,4 +753,26 @@ function processResponsesEvent(line, aiMessageElement, lastItemId, streamHasCont
         }
     }
     return { aiMessageElement: updatedAiMessageElement, lastItemId: updatedLastItemId, streamHasContent: updatedStreamHasContent, finalResponseId, streamEnded: false };
+}
+
+// Add this function to process web search results
+function processWebSearchResults(data, messageElement) {
+    // First, remove typing indicator when we display search results
+    removeTypingIndicator();
+    
+    // Clear any existing content first
+    const contentElement = messageElement.querySelector('.ai-message-content');
+    if (!contentElement) return;
+    
+    // Format the data for our renderer
+    const searchData = {
+        query: data.query || '',
+        results: data.results || []
+    };
+    
+    // Use our new renderer to create the formatted results
+    const formattedResults = renderImprovedWebSearchResults(searchData);
+    
+    // Add it to the message content
+    contentElement.appendChild(formattedResults);
 }

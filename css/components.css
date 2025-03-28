@@ -840,56 +840,51 @@
 
     .input-container .bottom-toolbar.mobile-visible .tool-button {
         font-size: 0;
-        padding: 6px;
-        min-width: 36px;
-        width: 36px;
-        height: 36px;
+        padding: 8px;  /* Slightly larger touch target */
+        min-width: 40px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         display: flex;
         justify-content: center;
         align-items: center;
-        margin: 0 3px; /* Closer spacing */
-        background: none; /* Remove background */
-        border: none; /* Remove border */
+        margin: 0 4px; /* Slightly more spacing */
+        background: none;
+        border: none;
         color: var(--text-muted);
         transition: transform 0.2s ease, color 0.2s ease;
+        position: relative; /* For tooltip positioning */
     }
 
+    /* Add a subtle background on hover for better visual feedback */
     .input-container .bottom-toolbar.mobile-visible .tool-button:hover,
     .input-container .bottom-toolbar.mobile-visible .tool-button:active {
-        color: var(--accent-color); /* Use accent color on hover/active */
-        transform: scale(1.1); /* Subtle scale effect */
-        background: none; /* Keep consistent no background */
+        color: var(--accent-color);
+        transform: scale(1.1);
+        background-color: rgba(0, 0, 0, 0.05); /* Subtle background */
     }
 
-    .input-container .bottom-toolbar.mobile-visible .tool-button svg {
-        margin: 0;
-        width: 22px; /* Consistent icon size */
-        height: 22px; /* Consistent icon size */
-        stroke-width: 2px;
-        stroke: currentColor;
-    }
-
-    /* Show tooltip on long press (or hover on devices that support it) */
+    /* Improve the tooltips to make them actually visible on mobile */
     .input-container .bottom-toolbar.mobile-visible .tool-button::after {
         content: attr(title);
         position: absolute;
-        bottom: -24px;
+        bottom: -28px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.7);
+        background: rgba(0, 0, 0, 0.8);
         color: white;
-        padding: 3px 6px;
+        padding: 4px 8px;
         border-radius: 4px;
-        font-size: 10px;
+        font-size: 12px;
         white-space: nowrap;
         opacity: 0;
         pointer-events: none;
         transition: opacity 0.3s;
     }
 
-    .input-container .bottom-toolbar.mobile-visible .tool-button:hover::after {
-        opacity: 0; /* Hide by default, can enable if wanted */
+    /* Show tooltip on long press */
+    .input-container .bottom-toolbar.mobile-visible .tool-button:active::after {
+        opacity: 1;
     }
 
     /* Hide specific less-used buttons even in popup */
@@ -936,6 +931,210 @@
         top: unset;
         z-index: 6;
     }
+
+    /* Adjust message bubbles */
+    .user-bubble, .ai-message {
+        max-width: 90%; /* Wider bubbles on mobile */
+    }
+    
+    /* Improve code blocks on mobile */
+    .ai-message-content pre {
+        font-size: 14px; /* Slightly smaller font */
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 6px;
+        overflow-x: auto; /* Enable horizontal scrolling */
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        white-space: pre; /* Preserve formatting */
+        max-width: 100%; /* Ensure it doesn't overflow the container */
+    }
+    
+    /* Add visual indicator for scrollable code blocks */
+    .ai-message-content pre::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 20px;
+        background: linear-gradient(to right, transparent, var(--background-tertiary));
+        pointer-events: none;
+        opacity: 0.7;
+    }
+    
+    /* Adjust inline code on mobile */
+    .ai-message-content code:not(pre code) {
+        padding: 2px 4px;
+        font-size: 90%;
+        word-break: break-word;
+    }
+    
+    /* Improve images in messages */
+    .user-bubble .history-image {
+        max-width: 100%;
+        height: auto;
+        border-radius: 12px;
+    }
+    
+    /* Make tables scrollable horizontally */
+    .ai-message-content table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-collapse: collapse;
+        width: 100%;
+    }
 }
 
 /* --- End Mobile Input Toolbar Adjustments --- */
+
+/* Web Search Results Styling - Cross-Platform Improvements */
+.web-search-container {
+    margin: 10px 0;
+    border-radius: 10px;
+    border: 1px solid var(--border-primary);
+    overflow: hidden;
+    background-color: var(--background-secondary);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Search context pill/banner */
+.search-context-pill {
+    display: inline-block;
+    padding: 6px 12px;
+    margin: 0 0 12px;
+    border-radius: 16px;
+    background-color: var(--background-secondary);
+    font-size: 12px;
+    color: var(--text-muted);
+    max-width: fit-content;
+}
+
+/* Article styling */
+.web-search-article {
+    padding: 16px;
+    background-color: var(--background-primary);
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.web-search-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.web-search-content {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
+.web-search-content p {
+    margin-bottom: 10px;
+}
+
+.web-search-footer {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.web-search-source {
+    color: var(--accent-color);
+    text-decoration: none;
+    margin-right: auto;
+}
+
+.web-search-source:hover {
+    text-decoration: underline;
+}
+
+.web-search-metadata {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+/* Make the header/bullet styling more compact */
+.web-search-article h3 {
+    font-size: 1.1rem;
+    margin: 14px 0 8px;
+}
+
+.web-search-article ul {
+    padding-left: 20px;
+    margin: 8px 0;
+}
+
+.web-search-article li {
+    margin-bottom: 6px;
+}
+
+/* Action buttons at the bottom */
+.web-search-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.web-search-action-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 4px;
+}
+
+.web-search-action-btn:hover {
+    color: var(--accent-color);
+}
+
+.web-search-action-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Make the "Latest news on" label more subtle */
+.search-query-context {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    display: inline-block;
+}
+
+@media (max-width: 768px) {
+    .web-search-article {
+        padding: 12px;
+    }
+    
+    .web-search-title {
+        font-size: 1.1rem;
+    }
+}
+
+/* Web search section headers */
+.web-search-container h2,
+.web-search-container h3 {
+    font-size: 0.6rem; /* Smaller font size (was likely 1.1-1.2rem) */
+    margin: 18px 0 10px 0;
+    color: var(--text-primary);
+    line-height: 1.0;
+}
+
+/* Web search category headers/section titles */
+.web-search-article h2,
+.web-search-container > h2,
+.web-search-container > h3:not(.web-search-title) {
+    font-size: 0.9rem; /* Much smaller than the current size */
+    font-weight: 600;
+    margin: 16px 0 10px;
+    color: var(--text-primary);
+}
