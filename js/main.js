@@ -7,8 +7,8 @@ import { initializeMessageList, showWelcomeInterface } from './components/messag
 import { initializeSettingsModal } from './components/settingsModal.js';
 import { initializeWelcomeScreen } from './components/welcomeScreen.js';
 import { initializeHeader } from './components/header.js';
-// <<< NEW: Import initializer for Custom GPT Creator Screen >>>
 import { initializeCreatorScreen } from './customGpt/creatorScreen.js';
+import { initializeNotificationSystem } from './notificationHelper.js';
 
 /**
  * Main application entry point.
@@ -16,35 +16,27 @@ import { initializeCreatorScreen } from './customGpt/creatorScreen.js';
  */
 function initializeApp() {
     console.log("Initializing App...");
+    
+    // Initialize notification system first so it's available to other components
+    initializeNotificationSystem();
 
     // Load general settings first
     state.loadSettings();
-    // Load the initially active Custom GPT config (if any) from storage potentially
-    // This might be better handled after component initialization
-    // gptStore.loadInitialActiveConfig(); // Example hypothetical function
 
     // Initialize Core Components
     initializeSidebar();
     initializeChatInput();
     initializeMessageList();
-    initializeSettingsModal(); // Initializes the modal shell and general settings part
+    initializeSettingsModal();
     initializeWelcomeScreen();
-    initializeHeader(); // Initializes header dropdowns and active GPT display
+    initializeHeader();
+    initializeCreatorScreen();
 
-    // <<< NEW: Initialize the Custom GPT Creator Screen Modal >>>
-    initializeCreatorScreen(); // Initializes the separate modal for creating/editing GPTs
-
-    // Set initial view (could depend on whether a custom GPT is active)
+    // Set initial view
     const activeGpt = state.getActiveCustomGptConfig();
-    if (activeGpt) {
-        // If starting with an active GPT, maybe show chat interface directly?
-        // For now, let's stick to welcome, user can start chatting.
-        // showChatInterface(); // Or just update header display which initializeHeader does
-    }
-    showWelcomeInterface(); // Default to welcome screen
-
-    console.log("App Initialized.");
+    
+    // Rest of your initialization code...
 }
 
-// Wait for the DOM to be fully loaded before running the initialization logic
+// Call init when DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeApp);

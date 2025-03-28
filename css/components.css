@@ -58,6 +58,7 @@
     max-width: 80%;
     word-wrap: break-word;
     /* Prevent long words from overflowing */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .ai-message-container {
@@ -66,6 +67,7 @@
     /* Stack content and actions */
     margin-bottom: 20px;
     /* Spacing between AI messages */
+    animation: message-appear 0.3s ease-out;
 }
 
 .ai-message-content {
@@ -75,11 +77,11 @@
 }
 
 .ai-message-content pre {
-    background-color: #f0f0f0;
-    padding: 10px;
-    border-radius: 4px;
-    overflow-x: auto;
-    margin: 10px 0;
+    background-color: #f8f8f8;
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    position: relative;
 }
 
 .ai-message-content code {
@@ -269,20 +271,23 @@
 /* Sidebar Components */
 .new-chat-button {
     width: 100%;
-    padding: 12px;
+    padding: 12px 14px;
     background: none;
     border: 1px solid var(--border-primary);
-    border-radius: 6px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     gap: 10px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
     color: var(--text-primary);
+    transition: all 0.2s ease;
 }
 
 .new-chat-button:hover {
     background-color: rgba(0, 0, 0, 0.05);
+    border-color: var(--border-secondary);
 }
 
 .new-chat-button svg {
@@ -294,12 +299,14 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
+    margin-top: 20px;
 }
 
 .section-title {
     color: var(--text-muted);
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
 }
 
@@ -323,62 +330,75 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 8px;
-    border-radius: 6px;
+    padding: 10px 12px;
+    border-radius: 8px;
     cursor: pointer;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     color: var(--text-primary);
+    position: relative;
+    transition: background-color 0.2s ease;
 }
 
 .chat-item:hover {
     background-color: rgba(0, 0, 0, 0.05);
 }
 
+.chat-item.active {
+    background-color: rgba(0, 0, 0, 0.08);
+    font-weight: 500;
+}
+
 .chat-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 4px;
-    /* Removed overflow: hidden; as it's less relevant for SVG */
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     flex-shrink: 0;
-    /* Added flex properties to center the SVG */
     display: flex;
     align-items: center;
     justify-content: center;
     background-color: var(--background-tertiary);
-    /* Optional: Add a background */
     color: var(--text-muted);
-    /* Set a default color for the icon */
     border: 1px solid var(--border-primary);
-    /* Optional: Add border like circle buttons */
 }
 
 .chat-avatar svg {
     stroke: currentColor;
-    /* Ensure SVG uses the color set on .chat-avatar */
     width: 18px;
-    /* Match SVG width attribute */
     height: 18px;
-    /* Match SVG height attribute */
 }
 
 .chat-title {
     flex: 1;
-    /* Take remaining space */
-    font-size: 14px;
     white-space: nowrap;
-    /* Prevent wrapping */
     overflow: hidden;
     text-overflow: ellipsis;
-    /* Add ... if too long */
+    font-size: 14px;
 }
 
 .chat-options {
-    color: var(--text-muted);
-    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.2s ease;
 }
 
-.chat-options svg {
-    stroke: currentColor;
+.chat-item:hover .chat-options {
+    opacity: 1;
+}
+
+.delete-chat-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 6px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-chat-button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: #d32f2f;
 }
 
 .settings-button {
@@ -435,10 +455,12 @@
     text-align: left;
     cursor: pointer;
     color: var(--text-primary);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .example-prompt:hover {
-    background-color: var(--background-tertiary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Settings Modal Components */
@@ -518,31 +540,46 @@
 }
 
 /* Notification Components */
-.notification {
-    background-color: var(--background-primary);
-    border-left: 4px solid var(--accent-color);
-    /* Default to success */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    padding: 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    color: #333;
-    /* Specific color for notification text */
-    animation: slide-in 0.3s ease-out forwards, fade-out 0.5s ease-out 2.5s forwards;
-    pointer-events: auto;
-    /* Allow interaction with notification */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-width: 240px;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 300px;
+    pointer-events: none; /* Allow clicks to pass through container */
 }
 
-.notification.error {
-    border-left-color: var(--error-color);
+.notification {
+    background-color: var(--background-primary);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin-bottom: 10px;
+    opacity: 1;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: auto; /* Make individual notifications clickable */
+    border-left: 4px solid var(--accent-color);
+    animation: slide-in 0.3s ease-out;
+    max-width: 100%;
+    word-break: break-word;
 }
 
 .notification.success {
-    border-left-color: var(--accent-color);
+    border-left-color: #4CAF50;
+}
+
+.notification.error {
+    border-left-color: #F44336;
+}
+
+.notification.warning {
+    border-left-color: #FF9800;
 }
 
 .notification.info {
@@ -551,24 +588,29 @@
 
 .notification-content {
     flex: 1;
-    /* Take available space */
-    padding-right: 10px;
-    /* Space before close button */
+    padding-right: 8px;
+    font-size: 14px;
 }
 
 .notification-close {
     background: none;
     border: none;
-    cursor: pointer;
     color: var(--text-muted);
-    margin-left: 10px;
-    font-size: 16px;
-    padding: 0;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0 4px;
     line-height: 1;
 }
 
 .notification-close:hover {
     color: var(--text-primary);
+}
+
+/* Dark mode support for notifications */
+body.dark-mode .notification {
+    background-color: var(--dark-background-secondary);
+    color: var(--dark-text-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* Image Upload Components */
@@ -1089,4 +1131,205 @@
     font-weight: 600;
     margin: 16px 0 10px;
     color: var(--text-primary);
+}
+
+/* Remove or modify these styles that might affect desktop */
+.input-container {
+    height: auto;  /* This is good - keep this */
+    padding-bottom: 16px;  /* Increase from 5px for desktop */
+}
+
+.chat-container {
+    /* Ensure enough space for the input area */
+    padding-bottom: 16px;
+}
+
+/* Enhance mobile view for chat interface */
+@media (max-width: 768px) {
+    .ai-message-container, .user-message-container {
+        max-width: 95%;
+    }
+    
+    .header-title {
+        font-size: 16px; /* Slightly smaller title on mobile */
+    }
+    
+    /* Improve input area on mobile */
+    .input-container {
+        padding: 8px;
+    }
+    
+    /* Better spacing for mobile welcome screen */
+    #welcomeScreen .example-prompts {
+        grid-template-columns: 1fr; /* Single column on mobile */
+    }
+}
+
+/* Add subtle animation to messages for a more dynamic feel */
+.ai-message-container, .user-message-container {
+    animation: message-appear 0.3s ease-out;
+}
+
+@keyframes message-appear {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Enhance the chat bubbles with subtle shadows */
+.user-bubble {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Add hover effects to interactive elements */
+.header-action:hover {
+    background-color: var(--background-tertiary);
+    border-radius: 4px;
+}
+
+/* Improve the welcome screen presentation */
+#welcomeScreen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 2rem;
+    text-align: center;
+}
+
+#welcomeScreen h1 {
+    font-size: 32px;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(90deg, var(--accent-color), #4a90e2);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.example-prompts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    width: 100%;
+    max-width: 900px;
+    margin-top: 2rem;
+}
+
+.example-prompt {
+    background-color: var(--background-secondary);
+    padding: 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    border: 1px solid var(--border-primary);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Add language label and copy button */
+.ai-message-content pre::before {
+    content: attr(data-language);
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 2px 8px;
+    font-size: 12px;
+    background-color: #e0e0e0;
+    border-radius: 0 8px 0 8px;
+    color: #333;
+}
+
+.code-copy-button {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    background: rgba(255,255,255,0.7);
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.ai-message-content pre:hover .code-copy-button {
+    opacity: 1;
+}
+
+/* Custom Dialog Styling */
+.custom-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1100; /* Above overlay */
+    background-color: var(--background-primary);
+    border-radius: 8px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+    max-width: 450px;
+    width: 90%;
+}
+
+.dialog-content {
+    padding: 24px;
+}
+
+.dialog-content p {
+    margin: 0 0 20px 0;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.dialog-button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    background: none;
+}
+
+.cancel-button {
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary);
+}
+
+.cancel-button:hover {
+    background-color: var(--background-tertiary);
+}
+
+.confirm-button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+}
+
+.confirm-button:hover {
+    background-color: var(--accent-hover);
+}
+
+/* Dark mode support */
+body.dark-mode .custom-dialog {
+    background-color: var(--dark-background-secondary);
+    color: var(--dark-text-primary);
+}
+
+body.dark-mode .cancel-button {
+    border-color: var(--dark-border-primary);
+    color: var(--dark-text-primary);
+}
+
+body.dark-mode .cancel-button:hover {
+    background-color: var(--dark-background-tertiary);
 }

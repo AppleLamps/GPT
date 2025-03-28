@@ -7,9 +7,10 @@ import { openCreatorModal } from '../customGpt/creatorScreen.js'; // <<< NEW: Im
 // Import UI functions needed from other components/modules
 import { showWelcomeInterface, showChatInterface, addUserMessage, renderMessagesFromHistory, clearMessageListUI } from './messageList.js';
 import { removeImagePreview, updateInputUIForModel, clearMessageInput, renderFilePreviews } from './chatInput.js';
-import { showNotification } from './notification.js';
+import { showNotification } from '../notificationHelper.js';
 import { escapeHTML } from '../utils.js';
 import { updateActiveGptDisplay } from './header.js'; // <<< NEW: To update header on load
+import { showConfirmDialog } from './dialog.js';
 
 // --- DOM Elements ---
 const sidebarElement = document.getElementById('sidebar');
@@ -112,22 +113,25 @@ function handleDeleteChat(chatId) {
     const chatToDelete = chatList.find(c => c.id === chatId);
     const titleToDelete = chatToDelete ? `"${chatToDelete.title}"` : `this chat (ID: ${chatId})`;
 
-    if (confirm(`Are you sure you want to delete the chat ${titleToDelete}?`)) {
-        const deleted = chatStore.deleteChat(chatId);
-        if (deleted) {
-            showNotification('Chat deleted.', 'success', 1500);
-            if (state.getActiveChatId() === chatId) {
-                state.clearChatHistory(); // Also clears activeCustomGptConfig implicitly? No, keep it separate
-                state.clearActiveCustomGptConfig(); // Explicitly clear active GPT if chat was deleted
-                updateActiveGptDisplay(); // Update header
-                showWelcomeInterface();
+    showConfirmDialog(`Are you sure you want to delete the chat ${titleToDelete}?`, 
+        () => {
+            const deleted = chatStore.deleteChat(chatId);
+            if (deleted) {
+                showNotification('Chat deleted.', 'success', 1500);
+                
+                if (state.getActiveChatId() === chatId) {
+                    state.clearChatHistory(); 
+                    state.clearActiveCustomGptConfig();
+                    updateActiveGptDisplay();
+                    showWelcomeInterface();
+                }
+                renderChatList();
+                renderCustomGptList();
+            } else {
+                showNotification('Failed to delete chat.', 'error');
             }
-            renderChatList();
-            renderCustomGptList(); // Re-render to ensure no GPT is highlighted if state cleared
-        } else {
-            showNotification('Failed to delete chat.', 'error');
         }
-    }
+    );
 }
 
 
@@ -236,24 +240,26 @@ function handleDeleteCustomGpt(gptId) {
     const configToDelete = configList.find(c => c.id === gptId);
     const nameToDelete = configToDelete ? `"${configToDelete.name}"` : `this Custom GPT (ID: ${gptId})`;
 
-    if (confirm(`Are you sure you want to delete ${nameToDelete}? This cannot be undone.`)) {
-        const deleted = gptStore.deleteConfig(gptId);
-        if (deleted) {
-            showNotification('Custom GPT deleted.', 'success', 1500);
-            // If the deleted GPT was the active one, clear state and UI
-            if (state.getActiveCustomGptConfig()?.id === gptId) {
-                state.clearActiveCustomGptConfig();
-                updateActiveGptDisplay(); // Update header
-                // Optional: switch back to default model behavior in chat view?
-                state.clearChatHistory(); // Clear associated chat context too
-                showWelcomeInterface(); // Show default welcome
-                updateInputUIForModel(); // Update for default model
+    showConfirmDialog(`Are you sure you want to delete ${nameToDelete}? This cannot be undone.`, 
+        () => {
+            const deleted = gptStore.deleteConfig(gptId);
+            if (deleted) {
+                showNotification('Custom GPT deleted.', 'success', 1500);
+                
+                // If the deleted GPT was the active one, clear state and UI
+                if (state.getActiveCustomGptConfig()?.id === gptId) {
+                    state.clearActiveCustomGptConfig();
+                    updateActiveGptDisplay(); 
+                    state.clearChatHistory();
+                    showWelcomeInterface();
+                    updateInputUIForModel();
+                }
+                renderCustomGptList();
+            } else {
+                showNotification('Failed to delete Custom GPT.', 'error');
             }
-            renderCustomGptList(); // Update sidebar list
-        } else {
-            showNotification('Failed to delete Custom GPT.', 'error');
         }
-    }
+    );
 }
 
 // --- General Sidebar Actions ---
@@ -308,21 +314,23 @@ function handleNewChat() {
 }
 
 function handleClearAllConversations() {
-    if (confirm("Are you sure you want to delete ALL saved CHAT conversations? Custom GPT configurations will NOT be deleted. This cannot be undone.")) {
-        if (chatStore.deleteAllChats()) {
-            // If active chat was a saved one, clear state
-            if (state.getActiveChatId()) {
-                state.clearChatHistory(); // Reset active state
+    showConfirmDialog("Are you sure you want to delete ALL saved CHAT conversations? Custom GPT configurations will NOT be deleted. This cannot be undone.", 
+        () => {
+            if (chatStore.deleteAllChats()) {
+                // If active chat was a saved one, clear state
+                if (state.getActiveChatId()) {
+                    state.clearChatHistory(); // Reset active state
+                }
+                // Keep active Custom GPT if any
+                showWelcomeInterface();
+                renderChatList(); // Update sidebar (should be empty)
+                showNotification("All chat conversations deleted.", "success");
+                toggleSidebar(false);
+            } else {
+                showNotification("Failed to delete all chat conversations.", "error");
             }
-            // Keep active Custom GPT if any
-            showWelcomeInterface();
-            renderChatList(); // Update sidebar (should be empty)
-            showNotification("All chat conversations deleted.", "success");
-            toggleSidebar(false);
-        } else {
-            showNotification("Failed to delete all chat conversations.", "error");
         }
-    }
+    );
 }
 
 function handleNotImplemented(event) {
@@ -344,7 +352,7 @@ function handleNotImplemented(event) {
 
 export function initializeSidebar() {
     menuButton?.addEventListener('click', () => toggleSidebar(true));
-    overlayElement?.addEventListener('click', handleOverlayClick);
+    overlayElement?.addEventListener('click', () => toggleSidebar(false));
     newChatBtn?.addEventListener('click', handleNewChat);
     addCustomGptBtn?.addEventListener('click', () => openCreatorModal(null)); // <<< Open creator for NEW
 

@@ -1,5 +1,5 @@
-import * as ui from './ui.js'; // Assuming showNotification is here
-// OR import { ..., showNotification } from './ui.js';
+import * as ui from './ui.js';
+import { showNotification } from './notificationHelper.js';
 import * as state from './state.js';
 import * as api from './api.js';
 import * as utils from './utils.js';
@@ -47,7 +47,7 @@ function handleSettingsSave() {
     const newModel = ui.modelSelect?.value || 'gpt-4o';
     state.saveSettings(newApiKey, newModel);
     ui.toggleSettingsModal(false);
-    ui.showNotification('Settings saved successfully!', 'success'); // Use imported function
+    showNotification('Settings saved successfully!', 'success');
 }
 
 function handleNewChat() {
@@ -106,7 +106,7 @@ async function handleImageUpload(event) {
     if (!file) return;
 
     if (!file.type.match('image/jpeg') && !file.type.match('image/png')) {
-        ui.showNotification('Please upload a JPG or PNG image.', 'error'); // Use imported function
+        showNotification('Please upload a JPG or PNG image.', 'error');
         state.clearCurrentImage();
         ui.removeImagePreview();
         return;
@@ -116,11 +116,11 @@ async function handleImageUpload(event) {
         const base64Image = await utils.convertToBase64(file);
         state.setCurrentImage({ data: base64Image, name: file.name });
         ui.showImagePreview(base64Image);
-        ui.showNotification('Image ready to send with your next message.', 'success'); // Use imported function
+        showNotification('Image ready to send with your next message.', 'success');
         ui.messageInput?.focus();
     } catch (error) {
         console.error("Error processing image:", error);
-        ui.showNotification('Error processing image.', 'error'); // Use imported function
+        showNotification('Error processing image.', 'error');
         state.clearCurrentImage();
         ui.removeImagePreview();
     }
@@ -134,7 +134,7 @@ export function handleRemoveImageClick() {
 
 export function handleCopyClick(contentToCopy) {
     utils.copyTextToClipboard(contentToCopy);
-    ui.showNotification('Response copied to clipboard!', 'success'); // Use imported function
+    showNotification('Response copied to clipboard!', 'success');
 }
 
 export function handleRegenerateClick(aiMessageElement) {
@@ -186,7 +186,7 @@ function handleDelegatedClicks(event) {
         case 'helpFAQBtn':
         case 'logoutBtn':
             const buttonText = button.title || button.textContent?.trim().split('\n')[0] || buttonId || 'Button';
-            ui.showNotification(`${buttonText} functionality not yet implemented.`, 'info'); // Use imported function
+            showNotification(`${buttonText} functionality not yet implemented.`, 'info');
             break;
 
         default: break; // Ignore others

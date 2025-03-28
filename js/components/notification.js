@@ -1,12 +1,13 @@
 // ===== FILE: js/components/notification.js =====
 
-// Import necessary functions if they remain in utils or are moved elsewhere
-import { escapeHTML } from '../utils.js'; // Assuming escapeHTML stays in utils.js
+// Import necessary functions
+import { escapeHTML } from '../utils.js';
 
 // --- DOM Elements ---
 const notificationContainer = document.getElementById('notificationContainer');
 
-// --- Notification Logic ---
+// Define autoRemoveTimeoutId at the module level
+let autoRemoveTimeoutId;
 
 /**
  * Displays a temporary notification message on the screen.
@@ -21,10 +22,11 @@ export function showNotification(message, type = 'info', duration = 3000) {
     }
 
     const notification = document.createElement('div');
-    // Add base class and type-specific class (e.g., 'notification info')
     notification.className = `notification ${type}`;
+    
+    // Make notification element clickable
+    notification.style.pointerEvents = 'auto';
 
-    // Use innerHTML to structure the notification content and close button
     notification.innerHTML = `
         <div class="notification-content">${escapeHTML(message)}</div>
         <button class="notification-close">&times;</button>
@@ -32,33 +34,43 @@ export function showNotification(message, type = 'info', duration = 3000) {
 
     // --- Close Button Logic ---
     const closeButton = notification.querySelector('.notification-close');
-    let autoRemoveTimeoutId; // Keep track of the timeout
+    
+    // Reset any existing timeout
+    if (autoRemoveTimeoutId) {
+        clearTimeout(autoRemoveTimeoutId);
+    }
 
     const removeNotification = () => {
-        // Fade out animation (optional, depends on CSS)
+        // Fade out animation 
         notification.style.opacity = '0';
-        // Use setTimeout to remove after fade-out transition completes (e.g., 300ms)
+        // Use setTimeout to remove after fade-out transition completes
         setTimeout(() => {
             if (notificationContainer.contains(notification)) {
                 notificationContainer.removeChild(notification);
             }
         }, 300); // Match CSS transition duration
-        clearTimeout(autoRemoveTimeoutId); // Clear auto-remove timeout if closed manually
+        clearTimeout(autoRemoveTimeoutId);
     };
 
     closeButton?.addEventListener('click', removeNotification);
 
     // Append to container
     notificationContainer.appendChild(notification);
+    
+    // Set initial opacity to 0 and then transition to 1 for smooth appearance
+    notification.style.opacity = '0';
+    setTimeout(() => {
+        notification.style.opacity = '1';
+    }, 10);
 
     // --- Auto-remove Logic ---
     autoRemoveTimeoutId = setTimeout(removeNotification, duration);
 
-    // Optional: Pause auto-remove on hover (add mouseenter/mouseleave listeners)
-    // notification.addEventListener('mouseenter', () => clearTimeout(autoRemoveTimeoutId));
-    // notification.addEventListener('mouseleave', () => {
-    //    autoRemoveTimeoutId = setTimeout(removeNotification, duration / 2); // Optionally shorter duration after hover
-    // });
+    // Pause auto-remove on hover
+    notification.addEventListener('mouseenter', () => clearTimeout(autoRemoveTimeoutId));
+    notification.addEventListener('mouseleave', () => {
+        autoRemoveTimeoutId = setTimeout(removeNotification, duration / 2);
+    });
 }
 
 // --- Initialization ---

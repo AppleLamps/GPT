@@ -4,7 +4,7 @@ import * as state from '../state.js';
 import * as api from '../api.js'; // Needed for regenerate
 import * as chatStore from '../chatStore.js'; // Needed for regenerate save
 import * as utils from '../utils.js';
-import { showNotification } from './notification.js';
+import { showNotification } from '../notificationHelper.js';
 // <<< FIXED IMPORT: Use the new function names from parser.js >>>
 import { resetParser, parseFinalHtml, accumulateChunkAndGetEscaped } from '../parser.js';
 

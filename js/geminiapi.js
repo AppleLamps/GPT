@@ -1,7 +1,7 @@
 // ===== FILE: js/geminiapi.js =====
 import * as state from './state.js';
 import { showTypingIndicator, removeTypingIndicator, createAIMessageContainer, appendAIMessageContent, finalizeAIMessageContent, setupMessageActions } from './components/messageList.js';
-import { showNotification } from './components/notification.js';
+import { showNotification } from './notificationHelper.js';
 import { resetParser, accumulateChunkAndGetEscaped, parseFinalHtml, getAccumulatedRawText } from './parser.js';
 import { escapeHTML } from './utils.js';
 

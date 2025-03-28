@@ -3,7 +3,7 @@
 import * as state from '../state.js';
 import * as gptStore from './gptStore.js';
 import { handleKnowledgeUpload, MAX_KNOWLEDGE_FILES_PER_CONFIG } from './knowledgeHandler.js';
-import { showNotification } from '../components/notification.js';
+import { showNotification } from '../notificationHelper.js';
 import { escapeHTML } from '../utils.js';
 import { renderCustomGptList } from '../components/sidebar.js'; // Import function to refresh sidebar list
 import { updateActiveGptDisplay } from '../components/header.js'; // Import function to update header

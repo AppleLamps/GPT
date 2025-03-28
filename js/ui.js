@@ -186,42 +186,12 @@ export function removeImagePreview() {
 }
 
 // --- Notifications ---
-export function showNotification(message, type = 'info') {
-    const notificationContainer = document.createElement('div');
-    notificationContainer.className = `notification ${type}`;
-    
-    notificationContainer.innerHTML = `
-        <div class="notification-content">${message}</div>
-        <button class="notification-close">&times;</button>
-    `;
-    
-    document.body.appendChild(notificationContainer);
-    
-    // Add animation class after a small delay to trigger the animation
-    setTimeout(() => {
-        notificationContainer.classList.add('visible');
-    }, 10);
-    
-    // Set up the close button
-    const closeButton = notificationContainer.querySelector('.notification-close');
-    closeButton?.addEventListener('click', () => {
-        notificationContainer.classList.remove('visible');
-        setTimeout(() => {
-            document.body.removeChild(notificationContainer);
-        }, 300); // Match the CSS transition duration
+export function showNotification(message, type = 'info', duration = 3000) {
+    console.warn('Deprecated: Using old notification system. Please import from notificationHelper.js instead');
+    // Forward to new system
+    import('./notificationHelper.js').then(module => {
+        module.showNotification(message, type, duration);
     });
-    
-    // Auto-dismiss after 3 seconds
-    setTimeout(() => {
-        if (document.body.contains(notificationContainer)) {
-            notificationContainer.classList.remove('visible');
-            setTimeout(() => {
-                if (document.body.contains(notificationContainer)) {
-                    document.body.removeChild(notificationContainer);
-                }
-            }, 300);
-        }
-    }, 3000);
 }
 
 // --- Mobile Toolbar Handling ---
@@ -242,4 +212,15 @@ export function setupMobileOptionsClickOutside() {
             }
         }
     });
+}
+
+// Add a function to show loading states more elegantly
+export function showLoadingState(element, isLoading) {
+    if (isLoading) {
+        element.classList.add('loading');
+        element.setAttribute('aria-busy', 'true');
+    } else {
+        element.classList.remove('loading');
+        element.setAttribute('aria-busy', 'false');
+    }
 }

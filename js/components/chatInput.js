@@ -3,7 +3,7 @@ import * as state from '../state.js';
 import * as api from '../api.js';
 import * as utils from '../utils.js'; // utils now contains processAndStoreFile
 import { addUserMessage, showChatInterface } from './messageList.js';
-import { showNotification } from './notification.js';
+import { showNotification } from '../notificationHelper.js';
 
 // --- DOM Elements ---
 const messageInputElement = document.getElementById('messageInput');
@@ -507,7 +507,10 @@ export function initializeChatInput() {
 
     // Image Upload
     if (imageButton) {
-        imageButton.addEventListener('click', () => { imageInputElement?.click(); });
+        imageButton.addEventListener('click', () => {
+            imageInputElement?.click();
+            closeMobileOptions();
+        });
     } else { console.error("Image button ('imageButton') not found."); }
     if (imageInputElement) {
         imageInputElement.addEventListener('change', handleImageUpload);
@@ -580,23 +583,6 @@ export function initializeChatInput() {
             closeMobileOptions();
         });
     });
-    
-    // Also handle specific button click events as needed
-    if (imageButton) {
-        imageButton.addEventListener('click', () => {
-            // Existing image upload handling logic
-            imageInputElement.click();
-            closeMobileOptions();
-        });
-    }
-    
-    if (fileInputElement) {
-        fileInputElement.addEventListener('click', () => {
-            // Existing file upload handling logic  
-            fileInputElement.click();
-            closeMobileOptions();
-        });
-    }
     
     // Handle other specific toolbar buttons similarly
     // ... existing code ...

@@ -28,7 +28,7 @@
     display: flex;
     flex-direction: column;
     height: calc(100vh - var(--header-height) - var(--input-area-height));
-    overflow: hidden;
+    overflow-y: auto;
     /* Reduce bottom padding to prevent scroll */
     padding: 0 32px 16px 32px;
 }
@@ -43,10 +43,10 @@
      background-color: var(--background-primary);
      border-top: 1px solid var(--border-secondary);
      z-index: 5;
-     /* Ensure it stays within the viewport width */
      max-width: 100%;
      box-sizing: border-box;
-     height: var(--input-area-height);
+     /* Remove the fixed height - let it be determined by content */
+     min-height: var(--input-area-height);
  }
 
  .input-row {
@@ -172,11 +172,9 @@
      top: 20px;
      right: 20px;
      z-index: 1000;
-     /* Above everything */
      display: flex;
      flex-direction: column;
      gap: 10px;
      max-width: 300px;
-     pointer-events: none;
-     /* Allow clicks through container */
+     pointer-events: none; /* This should be none so clicks go through container */
  }

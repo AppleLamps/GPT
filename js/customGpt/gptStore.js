@@ -2,7 +2,7 @@
 
 // Assuming generateId is in utils.js or create it here/in utils
 import { generateId } from '../utils.js';
-import { showNotification } from '../components/notification.js';
+import { showNotification } from '../notificationHelper.js';
 
 // Constants for localStorage keys
 const CONFIG_LIST_KEY = 'gpt_config_list'; // Key for the array of config metadata
