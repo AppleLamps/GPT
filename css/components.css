@@ -1,0 +1,761 @@
+/* ===== FILE: css/components.css ===== */
+/* Styles for individual UI components */
+
+/* Header Components */
+.menu-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    color: var(--text-primary);
+}
+
+.header-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.header-title .model {
+    color: var(--text-muted);
+}
+
+.header-action {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    color: var(--text-primary);
+}
+
+/* Message Components */
+.message-container {
+    display: flex;
+    /* Initially hidden/shown via JS */
+    flex-direction: column;
+    padding: 20px 0;
+}
+
+.user-message-container {
+    display: flex;
+    justify-content: flex-end;
+    /* Align user messages to the right */
+    margin-bottom: 20px;
+}
+
+.user-bubble {
+    background-color: var(--background-secondary);
+    color: var(--text-secondary);
+    padding: 14px 18px;
+    border-radius: 25px;
+    max-width: 80%;
+    word-wrap: break-word;
+    /* Prevent long words from overflowing */
+}
+
+.ai-message-container {
+    display: flex;
+    flex-direction: column;
+    /* Stack content and actions */
+    margin-bottom: 20px;
+    /* Spacing between AI messages */
+}
+
+.ai-message-content {
+    padding: 4px 0 12px 0;
+    word-wrap: break-word;
+    /* Add styles for code blocks, bold, italics if needed */
+}
+
+.ai-message-content pre {
+    background-color: #f0f0f0;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 10px 0;
+}
+
+.ai-message-content code {
+    font-family: monospace;
+}
+
+.ai-message-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.action-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0;
+    /* Remove padding if icons are sized correctly */
+    display: flex;
+    /* Align icon */
+    align-items: center;
+}
+
+.action-button svg {
+    /* Ensure SVGs inherit color */
+    stroke: currentColor;
+}
+
+.action-button:hover {
+    color: var(--text-primary);
+    /* Darken on hover */
+}
+
+/* Input Area Components */
+.input-box {
+    width: 100%;
+    border: 1px solid var(--border-primary);
+    border-radius: 24px;
+    padding: 14px 50px 14px 16px;
+    /* Space for send button */
+    font-size: 16px;
+    background-color: var(--background-primary);
+    resize: none;
+    /* Disable manual resizing */
+    min-height: 53px;
+    /* Initial height */
+    max-height: 200px;
+    /* Limit expansion */
+    overflow-y: auto;
+    /* Scroll if content exceeds max-height */
+    line-height: 1.4;
+    /* Adjust line height for better readability */
+}
+
+.input-box:focus {
+    outline: none;
+    border-color: var(--border-focus);
+}
+
+.send-button {
+    position: absolute;
+    right: 28px;
+    bottom: 28px;
+    /* Adjust based on input container padding */
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 5px;
+    /* Clickable area */
+}
+
+.send-button:hover {
+    color: var(--text-primary);
+}
+
+.send-button svg {
+    stroke: currentColor;
+}
+
+/* Bottom Toolbar Components */
+.bottom-toolbar {
+    display: flex;
+    justify-content: center;
+    /* Or flex-start/end */
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.tool-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: var(--background-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 20px;
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, cursor 0.2s ease;
+    /* Added transitions */
+}
+
+.tool-button:hover {
+    background-color: #e0e0e0;
+    /* Slightly darker */
+}
+
+.tool-button svg {
+    stroke: currentColor;
+}
+
+/* Style for when the web search is toggled ON */
+.tool-button.active {
+    background-color: #d0e6ff;
+    /* Light blue background */
+    border-color: #a0c8f0;
+    /* Slightly darker blue border */
+    color: #0056b3;
+    /* Darker text color */
+}
+
+.tool-button.active svg {
+    stroke: #0056b3;
+    /* Match text color */
+}
+
+/* Style for when the button is disabled */
+.tool-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: var(--background-tertiary);
+    /* Keep base background */
+    border-color: var(--border-primary);
+    /* Keep base border */
+    color: var(--text-muted);
+    /* Muted text */
+}
+
+.tool-button:disabled:hover {
+    background-color: var(--background-tertiary);
+    /* Prevent hover effect */
+}
+
+.tool-button:disabled svg {
+    stroke: var(--text-muted);
+    /* Muted icon */
+}
+
+
+.circle-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--background-tertiary);
+    border: 1px solid var(--border-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+.circle-button:hover {
+    background-color: #e0e0e0;
+}
+
+.circle-button svg {
+    stroke: currentColor;
+}
+
+/* Sidebar Components */
+.new-chat-button {
+    width: 100%;
+    padding: 12px;
+    background: none;
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.new-chat-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.new-chat-button svg {
+    stroke: currentColor;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.section-title {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.add-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0;
+}
+
+.add-button:hover {
+    color: var(--text-primary);
+}
+
+.add-button svg {
+    stroke: currentColor;
+}
+
+.chat-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+}
+
+.chat-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.chat-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    /* Removed overflow: hidden; as it's less relevant for SVG */
+    flex-shrink: 0;
+    /* Added flex properties to center the SVG */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--background-tertiary);
+    /* Optional: Add a background */
+    color: var(--text-muted);
+    /* Set a default color for the icon */
+    border: 1px solid var(--border-primary);
+    /* Optional: Add border like circle buttons */
+}
+
+.chat-avatar svg {
+    stroke: currentColor;
+    /* Ensure SVG uses the color set on .chat-avatar */
+    width: 18px;
+    /* Match SVG width attribute */
+    height: 18px;
+    /* Match SVG height attribute */
+}
+
+.chat-title {
+    flex: 1;
+    /* Take remaining space */
+    font-size: 14px;
+    white-space: nowrap;
+    /* Prevent wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* Add ... if too long */
+}
+
+.chat-options {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.chat-options svg {
+    stroke: currentColor;
+}
+
+.settings-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.settings-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 6px;
+}
+
+.settings-button svg {
+    stroke: currentColor;
+    flex-shrink: 0;
+}
+
+/* Welcome Screen Components */
+.welcome-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.welcome-subtitle {
+    font-size: 16px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+}
+
+.example-prompts {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 600px;
+    /* Limit width */
+}
+
+.example-prompt {
+    padding: 12px 16px;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    text-align: left;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+.example-prompt:hover {
+    background-color: var(--background-tertiary);
+}
+
+/* Settings Modal Components */
+.modal-title {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    font-size: 24px;
+    /* Larger for easier clicking */
+    cursor: pointer;
+    color: var(--text-muted);
+    line-height: 1;
+}
+
+.close-button:hover {
+    color: var(--text-primary);
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.form-input,
+.form-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    font-size: 14px;
+    background-color: var(--background-primary);
+    /* Ensure select has background */
+}
+
+.form-input:focus,
+.form-select:focus {
+    outline: none;
+    border-color: var(--border-focus);
+}
+
+.form-select {
+    appearance: none;
+    /* Optional: Custom select arrow styling */
+}
+
+.form-note {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.save-button {
+    background-color: var(--accent-color);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 8px;
+    /* Spacing above button */
+}
+
+.save-button:hover {
+    background-color: var(--accent-hover);
+}
+
+/* Notification Components */
+.notification {
+    background-color: var(--background-primary);
+    border-left: 4px solid var(--accent-color);
+    /* Default to success */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #333;
+    /* Specific color for notification text */
+    animation: slide-in 0.3s ease-out forwards, fade-out 0.5s ease-out 2.5s forwards;
+    pointer-events: auto;
+    /* Allow interaction with notification */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 240px;
+}
+
+.notification.error {
+    border-left-color: var(--error-color);
+}
+
+.notification.success {
+    border-left-color: var(--accent-color);
+}
+
+.notification.info {
+    border-left-color: var(--info-color);
+}
+
+.notification-content {
+    flex: 1;
+    /* Take available space */
+    padding-right: 10px;
+    /* Space before close button */
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    margin-left: 10px;
+    font-size: 16px;
+    padding: 0;
+    line-height: 1;
+}
+
+.notification-close:hover {
+    color: var(--text-primary);
+}
+
+/* Image Upload Components */
+.image-input {
+    /* Hidden via JS or inline style in HTML */
+    display: none;
+}
+
+#imagePreview {
+    /* Container for preview(s) */
+    /* REMOVED padding: 10px 0 0 16px; */
+    padding: 0;
+    /* Explicitly set padding to 0 */
+    margin-bottom: 10px;
+    /* ADD margin below if spacing is needed */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.image-preview-wrapper {
+    position: relative;
+    display: inline-block;
+    max-width: 100px;
+    /* Smaller preview */
+    max-height: 100px;
+}
+
+.image-preview-wrapper img {
+    max-width: 100%;
+    max-height: 100px;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border-primary);
+    display: block;
+    /* Prevent extra space below image */
+}
+
+.remove-image {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--background-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    line-height: 18px;
+    /* Center the '×' */
+    text-align: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: #666;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.remove-image:hover {
+    background: var(--background-tertiary);
+    color: #333;
+}
+
+/* Add this to css/components.css */
+.ai-message-content p {
+    margin-bottom: 1em;
+    /* Adds space after each paragraph */
+    /* You can adjust the value '1em' (roughly one line height) */
+}
+
+/* Optional: Prevent extra margin on the very first paragraph if needed */
+/*
+.ai-message-content p:first-child {
+   margin-top: 0;
+}
+*/
+
+/* Typing Indicator Specific Style (Optional) */
+.typing-indicator .ai-message-content {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Header Model Selector Dropdown */
+.header-model-selector {
+    /* Adjust flex properties if needed based on your header layout */
+    display: flex;
+    align-items: center;
+}
+
+.header-model-select {
+    /* Reset default appearance */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: transparent;
+    /* Match header background */
+    border: none;
+    padding: 4px 20px 4px 0;
+    /* Add space for a potential custom arrow */
+    margin: 0;
+    font-family: inherit;
+    /* Use the body font */
+    font-size: 18px;
+    /* Match original header-title size */
+    font-weight: 600;
+    /* Match original header-title weight */
+    color: var(--text-primary);
+    /* Match original header-title color */
+    cursor: pointer;
+    outline: none;
+    /* Remove focus outline */
+
+    /* Optional: Add custom dropdown arrow using background image */
+    /* background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27292.4%27%20height%3D%27292.4%27%3E%3Cpath%20fill%3D%27%23{COLOR}%27%20d%3D%27M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%27%2F%3E%3C%2Fsvg%3E".replace('{COLOR}', '343541')); */
+    /* background-repeat: no-repeat; */
+    /* background-position: right 0.2em top 50%; */
+    /* background-size: 0.65em auto; */
+
+    /* Simple text-based arrow */
+    position: relative;
+    padding-right: 15px;
+    /* Make space for text arrow */
+}
+
+/* Simple text-based arrow */
+.header-model-select::after {
+    content: '>';
+    /* Use '>' like the original text */
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    /* Allow clicks to pass through to select */
+    color: var(--text-muted);
+    /* Match original muted color */
+    font-size: 16px;
+    /* Slightly smaller */
+    margin-left: 5px;
+}
+
+
+.header-model-select:hover {
+    color: #000;
+    /* Slightly darken on hover */
+}
+
+.header-model-select option {
+    /* Style options (limited browser support) */
+    background-color: var(--background-primary);
+    color: var(--text-primary);
+}
+
+/* Optional: Styling for when audio is loading or playing */
+.listen-button.loading svg,
+.listen-button.playing svg {
+    opacity: 0.5;
+    /* Example: Dim the icon */
+}
+
+.listen-button.loading {
+    cursor: wait;
+}
+
+/* Inside css/components.css */
+
+/* Optional styling for the new textarea */
+#ttsInstructionsInput {
+    min-height: 60px;
+    /* Adjust as needed */
+    resize: vertical;
+    /* Allow vertical resizing */
+}
+
+/* Added to css/layout.css (or components.css) */
+.header-right-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    /* Adjust gap between settings and new chat icons as needed */
+}
+
+
+/* Style for images within user message history */
+.user-bubble .history-image {
+    display: block;
+    /* Make image a block element */
+    max-width: 100%;
+    /* Prevent image from exceeding bubble width */
+    max-height: 250px;
+    /* Limit image height */
+    height: auto;
+    /* Maintain aspect ratio */
+    border-radius: 15px;
+    /* Match bubble corners slightly */
+    margin-bottom: 8px;
+    /* Add space between image and text */
+    border: 1px solid var(--border-primary);
+    /* Optional subtle border */
+}
+
+/* Style for when the image gen button is toggled ON */
+#imageGenButton.active {
+    background-color: #d0e6ff; /* Or another distinct color */
+    border-color: #a0c8f0;
+    color: #0056b3;
+}
+
+#imageGenButton.active svg {
+    stroke: #0056b3; /* Match text color */
+}
