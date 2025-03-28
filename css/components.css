@@ -835,18 +835,37 @@
 
 
     /* 8. Style buttons within the popup */
+    .input-container .bottom-toolbar.mobile-visible {
+        display: flex; /* Show the toolbar as a flex container */
+        justify-content: center; /* Center the icons horizontally */
+        align-items: center; /* Center the icons vertically */
+    }
+
     .input-container .bottom-toolbar.mobile-visible .tool-button {
         font-size: 0;
         padding: 8px;
         min-width: 40px;
         width: 40px;
-        height: 40px; /* Correct height */
+        height: 40px; /* Consistent height */
         border-radius: 50%;
+        display: flex;
         justify-content: center;
+        align-items: center;
+        margin: 0 6px; /* Add even spacing between buttons */
+        background-color: var(--background-tertiary);
+        border: 1px solid var(--border-primary);
+        transition: background-color 0.2s ease;
+    }
+
+    .input-container .bottom-toolbar.mobile-visible .tool-button:hover {
+        background-color: var(--background-hover);
     }
 
     .input-container .bottom-toolbar.mobile-visible .tool-button svg {
         margin: 0;
+        width: 20px; /* Consistent icon size */
+        height: 20px; /* Consistent icon size */
+        stroke-width: 2px; /* Make icons more visible */
     }
 
     /* Hide specific less-used buttons even in popup */

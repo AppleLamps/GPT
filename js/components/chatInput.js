@@ -231,6 +231,20 @@ function handleOutsideClickForMobileOptions(event) {
     }
 }
 
+/**
+ * Closes the mobile options toolbar.
+ */
+function closeMobileOptions() {
+    if (!bottomToolbarElement || !mobileOptionsToggleBtn) return;
+    
+    if (bottomToolbarElement.classList.contains('mobile-visible')) {
+        bottomToolbarElement.classList.remove('mobile-visible');
+        // Reset '+' icon state
+        mobileOptionsToggleBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`; // Plus icon (+)
+        mobileOptionsToggleBtn.title = "More options";
+    }
+}
+
 
 // --- Modified handleSendMessage ---
 async function handleSendMessage() {
@@ -512,11 +526,36 @@ export function initializeChatInput() {
     }
 
     // Original Toolbar Buttons (listeners needed for desktop & when popup is visible)
-    if (searchButton) { searchButton.addEventListener('click', handleSearchToggle); }
-    if (researchButton) { researchButton.addEventListener('click', handleNotImplemented); }
-    if (voiceButton) { voiceButton.addEventListener('click', handleNotImplemented); }
-    if (imageGenButton) { imageGenButton.addEventListener('click', handleImageGenToggle); }
-    // Assuming modelButton opens settings, handled elsewhere or needs listener here
+    if (searchButton) { 
+        searchButton.addEventListener('click', (e) => {
+            handleSearchToggle(e);
+            closeMobileOptions();
+        }); 
+    }
+    if (researchButton) { 
+        researchButton.addEventListener('click', (e) => {
+            handleNotImplemented(e);
+            closeMobileOptions();
+        }); 
+    }
+    if (voiceButton) { 
+        voiceButton.addEventListener('click', (e) => {
+            handleNotImplemented(e);
+            closeMobileOptions();
+        }); 
+    }
+    if (imageGenButton) { 
+        imageGenButton.addEventListener('click', (e) => {
+            handleImageGenToggle(e);
+            closeMobileOptions();
+        }); 
+    }
+    if (fileInputElement) {
+        fileInputElement.addEventListener('click', (e) => {
+            // Your existing file input handling
+            closeMobileOptions();
+        });
+    }
 
     // Initial UI state updates
     adjustTextAreaHeight();
