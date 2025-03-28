@@ -773,12 +773,12 @@
     /* 3. Show and Position the '+' button on mobile */
     #mobileOptionsToggleBtn {
         display: flex;
-        position: absolute;
-        top: 50%;  /* Change from 43px to 50% */
-        transform: translateY(-50%);  /* Keep this */
-        left: 22px; /* Position *inside* container padding */
+        position: relative;
+        top: unset;
+        transform: none;
+        left: unset;
+        margin-right: 8px;
         z-index: 6;
-        /* Style like a circle button */
         width: 40px;
         height: 40px;
         border-radius: 50%;
@@ -799,27 +799,26 @@
 
     /* 4. Adjust input padding to make space for the buttons */
     .input-container .input-box {
-        padding-left: 70px;  /* Increased padding for button + gap */
-        padding-right: 70px; /* Increased padding for button + gap */
-        /* Keep existing top/bottom padding */
-        padding-top: 10px;  /* Reduce from 14px */
-        padding-bottom: 10px;  /* Reduce from 14px */
+        padding-left: 16px;
+        padding-right: 16px;
+        padding-top: 10px;
+        padding-bottom: 10px;
     }
 
     /* 5. Adjust Send Button position specifically for mobile */
     .input-container .send-button {
-        top: 50%;  /* Change from 43px to 50% */
-        transform: translateY(-50%);  /* Keep this */
-        right: 22px;
-        bottom: auto;
-        /* z-index, padding, color etc inherit */
+        position: relative;
+        top: unset;
+        transform: none;
+        right: unset;
+        bottom: unset;
+        margin-left: 8px;
     }
 
 
     /* 6. Adjust overall input area height */
     .input-container {
         height: auto; /* Allow height to grow based on textarea content */
-        /* min-height might not be needed if textarea has min-height */
         padding-bottom: 5px;  /* Reduce from 10px */
     }
 
@@ -890,9 +889,9 @@
     /* Ensure buttons stay aligned regardless of content */
     #mobileOptionsToggleBtn, 
     .send-button {
-        top: calc(50% + 10px); /* Adjust this value as needed */
-        position: absolute;
-        z-index: 10; /* Ensure buttons are above other elements */
+        position: relative;
+        top: unset;
+        z-index: 6;
     }
 }
 
