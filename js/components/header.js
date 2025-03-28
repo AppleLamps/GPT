@@ -22,8 +22,9 @@ function handleHeaderModelChange(event) {
 
     const currentApiKey = state.getApiKey();
     const currentTtsInstructions = state.getTtsInstructions();
+    const currentGeminiApiKey = state.getGeminiApiKey(); // Get current Gemini API key
 
-    state.saveSettings(currentApiKey, newDefaultModel, currentTtsInstructions);
+    state.saveSettings(currentApiKey, newDefaultModel, currentTtsInstructions, currentGeminiApiKey);
 
     if (!state.getActiveCustomGptConfig()) {
         updateInputUIForModel();

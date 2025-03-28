@@ -10,6 +10,7 @@ const settingsModalElement = document.getElementById('settingsModal');
 const apiKeyInput = document.getElementById('apiKey');
 const modelSelect = document.getElementById('modelSelect'); // Default model select
 const ttsInstructionsInput = document.getElementById('ttsInstructionsInput'); // Select the textarea
+const geminiApiKeyInput = document.getElementById('geminiApiKey'); // <<< NEW: Select Gemini API key
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 // Modal Control Elements
 const closeModalBtn = document.getElementById('closeModalBtn');
@@ -33,21 +34,13 @@ function toggleSettingsModal(visible) {
  * Loads the current GENERAL settings from state into the modal form fields.
  */
 function loadGeneralSettingsIntoForm() {
-    const currentSettings = state.loadSettings(); // Returns { apiKey, model, ttsInstructions }
+    const currentSettings = state.loadSettings(); // Returns { apiKey, model, ttsInstructions, geminiApiKey }
     if (apiKeyInput) apiKeyInput.value = currentSettings.apiKey || '';
     if (modelSelect) modelSelect.value = currentSettings.model || 'gpt-4o';
     if (ttsInstructionsInput) ttsInstructionsInput.value = currentSettings.ttsInstructions || '';
+    if (geminiApiKeyInput) geminiApiKeyInput.value = currentSettings.geminiApiKey || ''; // <<< NEW: Load Gemini API key
     console.log("General settings loaded into form.");
 }
-
-// <<< REMOVED the first, non-exported definition of openSettings >>>
-/*
-function openSettings() {
-    loadGeneralSettingsIntoForm(); // Load API Key, Default Model
-    toggleSettingsModal(true);
-    console.log("Settings modal opened.");
-}
-*/
 
 /**
  * Handles opening the settings modal.
@@ -72,14 +65,15 @@ function closeSettings() {
 }
 
 /**
- * Handles saving only the GENERAL settings (API Key, Default Model, TTS Instructions).
+ * Handles saving only the GENERAL settings (API Key, Default Model, TTS Instructions, Gemini API Key).
  */
 function handleGeneralSettingsSave() {
     const newApiKey = apiKeyInput?.value.trim() ?? '';
     const newModel = modelSelect?.value ?? 'gpt-4o';
     const newTtsInstructions = ttsInstructionsInput?.value.trim() ?? '';
+    const newGeminiApiKey = geminiApiKeyInput?.value.trim() ?? ''; // <<< NEW: Get Gemini API key value
 
-    state.saveSettings(newApiKey, newModel, newTtsInstructions);
+    state.saveSettings(newApiKey, newModel, newTtsInstructions, newGeminiApiKey);
 
     showNotification('General settings saved!', 'success');
 

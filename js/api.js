@@ -9,6 +9,8 @@ import { showNotification } from './components/notification.js';
 // Use new functions from parser
 import { resetParser, accumulateChunkAndGetEscaped, parseFinalHtml, getAccumulatedRawText } from './parser.js';
 import { escapeHTML } from './utils.js';
+// Import Gemini API functions
+import { fetchGeminiStream, buildGeminiPayloadContents, buildGeminiSystemInstruction, buildGeminiGenerationConfig } from './geminiapi.js';
 
 // API Endpoints
 const CHAT_COMPLETIONS_API_URL = 'https://api.openai.com/v1/chat/completions';
@@ -149,7 +151,55 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
     }
 
     // --- API Routing for chat/responses ---
-    if (finalModel === 'o3-mini-high') {
+    const isGeminiModel = finalModel.startsWith('gemini-'); // Check if it's a Gemini model
+
+    if (isGeminiModel) {
+        console.log(`Routing to Gemini API for model: ${finalModel}`);
+        const geminiApiKey = state.getGeminiApiKey(); // Get Gemini key
+        if (!geminiApiKey) {
+            showNotification("Error: Google Gemini API key is not set. Please go to Settings.", 'error');
+            return; // Stop if key is missing
+        }
+
+        // Build Gemini Payloads using helpers
+        const geminiContents = buildGeminiPayloadContents(state.getChatHistory(), null); // Pass history, System prompt handled separately
+        const geminiSystemInstruction = buildGeminiSystemInstruction(finalSystemPrompt);
+        const geminiGenerationConfig = buildGeminiGenerationConfig();
+
+        // Inject knowledge content into the last user message's text part within geminiContents
+        if (knowledgeContent && geminiContents && geminiContents.length > 0) {
+            const lastContent = geminiContents[geminiContents.length - 1];
+            if (lastContent.role === 'user' && lastContent.parts) {
+                const textPart = lastContent.parts.find(p => p.text !== undefined);
+                if (textPart) {
+                    textPart.text = knowledgeContent + "\n\n" + (textPart.text || '');
+                    console.log("Knowledge content prepended to last user message for Gemini.");
+                } else {
+                    // If no text part exists (e.g., image-only message), add one
+                    lastContent.parts.unshift({ text: knowledgeContent });
+                    console.log("Knowledge content added as new text part to last user message for Gemini.");
+                }
+            } else {
+                console.warn("Could not find suitable last user message part to prepend knowledge to for Gemini.");
+            }
+        }
+
+        if (!geminiContents) {
+            showNotification("Failed to prepare message data for Gemini API.", "error");
+            return;
+        }
+
+        // Call the Gemini fetch function
+        await fetchGeminiStream(
+            geminiApiKey,
+            finalModel, // Pass the specific model name
+            geminiContents,
+            geminiSystemInstruction,
+            geminiGenerationConfig
+        );
+        // Gemini call handles its own UI updates via messageList functions
+
+    } else if (finalModel === 'o3-mini-high') {
         console.log("Routing to Chat Completions API for o3-mini");
         // Pass the specific last user message entry for modification if needed
         const messagesPayload = buildMessagesPayload(history, finalSystemPrompt, knowledgeContent);

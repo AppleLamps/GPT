@@ -6,7 +6,8 @@ let currentImage = null; // { data: base64string, name: filename }
 let settings = {
     apiKey: '',
     model: 'gpt-4o', // Default model setting
-    ttsInstructions: '' // <<< NEW: Add property for TTS instructions
+    ttsInstructions: '', // <<< NEW: Add property for TTS instructions
+    geminiApiKey: '' // <<< NEW: Add property for Google Gemini API key
 };
 let attachedFiles = []; // For per-message file uploads
 let isImageGenerationMode = false; // Track if image generation mode is active
@@ -100,21 +101,24 @@ export function clearAttachedFiles() { /* ... (implementation from previous code
 export function loadSettings() {
     settings.apiKey = localStorage.getItem('openai_api_key') || '';
     settings.model = localStorage.getItem('openai_model') || 'gpt-4o';
-    settings.ttsInstructions = localStorage.getItem('openai_tts_instructions') || ''; // <<< NEW: Load instructions
+    settings.ttsInstructions = localStorage.getItem('openai_tts_instructions') || ''; // <<< Load instructions
+    settings.geminiApiKey = localStorage.getItem('google_gemini_api_key') || ''; // <<< NEW: Load Gemini API key
     console.log("General Settings Loaded:", settings);
     return { ...settings }; // Return a copy
 }
 
-// <<< MODIFIED: Accept ttsInstructions as a third argument >>>
-export function saveSettings(newApiKey, newModel, newTtsInstructions) {
+// <<< MODIFIED: Accept geminiApiKey as a fourth argument >>>
+export function saveSettings(newApiKey, newModel, newTtsInstructions, newGeminiApiKey) {
     settings.apiKey = newApiKey;
     settings.model = newModel;
     // Handle potential null/undefined, default to empty string
-    settings.ttsInstructions = newTtsInstructions?.trim() ?? ''; // <<< NEW: Save instructions
+    settings.ttsInstructions = newTtsInstructions?.trim() ?? ''; // <<< Save instructions
+    settings.geminiApiKey = newGeminiApiKey?.trim() ?? ''; // <<< NEW: Save Gemini API key
 
     localStorage.setItem('openai_api_key', newApiKey);
     localStorage.setItem('openai_model', newModel);
-    localStorage.setItem('openai_tts_instructions', settings.ttsInstructions); // <<< NEW: Save to localStorage
+    localStorage.setItem('openai_tts_instructions', settings.ttsInstructions); // <<< Save to localStorage
+    localStorage.setItem('google_gemini_api_key', settings.geminiApiKey); // <<< NEW: Save to localStorage
 
     console.log("General Settings Saved:", settings);
 
@@ -130,7 +134,8 @@ export function saveSettings(newApiKey, newModel, newTtsInstructions) {
 
 export function getApiKey() { return settings.apiKey; }
 export function getSelectedModelSetting() { return settings.model; }
-export function getTtsInstructions() { return settings.ttsInstructions; } // <<< NEW: Getter function
+export function getTtsInstructions() { return settings.ttsInstructions; }
+export function getGeminiApiKey() { return settings.geminiApiKey; } // <<< NEW: Getter function for Gemini API key
 
 // --- Web Search State (Per-message Toggle) ---
 export function toggleWebSearch() {

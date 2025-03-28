@@ -381,36 +381,48 @@ function handleSearchToggle() {
 }
 export function updateInputUIForModel(activeGpt) { // Pass activeGpt config object
     const effectiveModel = activeGpt?.model || state.getSelectedModelSetting(); // Use GPT's model if specified, else default
-    console.log("Updating input UI for effective model:", effectiveModel);
-
+    const isGemini = effectiveModel.startsWith('gemini-');
     const isGpt4o = effectiveModel === 'gpt-4o';
+    const isO3Mini = effectiveModel === 'o3-mini-high';
 
-    // Web Search UI
+    console.log(`Updating input UI for effective model: ${effectiveModel} (Is Gemini: ${isGemini}, Is GPT-4o: ${isGpt4o})`);
+
+    // Web Search UI - Only available for GPT-4o
     if (searchButton) {
-        searchButton.disabled = !isGpt4o;
-        searchButton.title = isGpt4o ? "Toggle Web Search" : "Web Search requires GPT-4o";
+        searchButton.disabled = !isGpt4o; // Only enable for GPT-4o
+        searchButton.title = isGpt4o ? "Toggle Web Search" : "Web Search only available for GPT-4o";
         if (!isGpt4o) {
             searchButton.classList.remove('active');
             state.setIsWebSearchEnabled(false);
         }
     }
 
-    // Image Generation UI
+    // Image Generation UI - Currently only OpenAI DALL-E is implemented
     if (imageGenButton) {
-        imageGenButton.disabled = !isGpt4o;
-        imageGenButton.title = isGpt4o ? "Toggle Image Generation Mode" : "Image Generation disabled for this model";
-        if (!isGpt4o) {
+        const supportsDalleGen = isGpt4o; // Currently only OpenAI DALL-E is implemented
+        imageGenButton.disabled = !supportsDalleGen;
+        imageGenButton.title = supportsDalleGen ? "Toggle Image Generation Mode (DALL-E 3)" : "Image Generation currently requires GPT-4o (DALL-E 3)";
+        if (!supportsDalleGen) {
             imageGenButton.classList.remove('active');
             state.setImageGenerationMode(false);
-            if (messageInputElement) messageInputElement.placeholder = "Message ChatGPT";
+            if (messageInputElement) {
+                const modelName = isGemini ? "Gemini" : "ChatGPT";
+                messageInputElement.placeholder = `Message ${modelName}`;
+            }
+        } else {
+            // Update placeholder based on state if GPT-4o is active
+            if (messageInputElement) {
+                messageInputElement.placeholder = state.getIsImageGenerationMode() ? "Enter a prompt to generate an image..." : "Message ChatGPT";
+            }
         }
     }
 
-    // Update Image Upload Button
+    // Image Upload Button - Both Gemini and GPT-4o support image input
     if (imageButton) {
-        imageButton.disabled = !isGpt4o;
-        imageButton.title = isGpt4o ? "Upload image" : "Image upload requires GPT-4o";
-        if (!isGpt4o && state.getCurrentImage()) {
+        const supportsImageInput = isGemini || isGpt4o;
+        imageButton.disabled = !supportsImageInput;
+        imageButton.title = supportsImageInput ? "Upload image" : "Image upload requires GPT-4o or Gemini";
+        if (!supportsImageInput && state.getCurrentImage()) {
             showNotification("Image removed as it's not supported by this model.", 'warning');
             state.clearCurrentImage();
             removeImagePreview();
