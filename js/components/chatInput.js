@@ -557,6 +557,33 @@ export function initializeChatInput() {
         });
     }
 
+    // Make sure all toolbar buttons close the popup when clicked
+    document.querySelectorAll('.bottom-toolbar .tool-button').forEach(button => {
+        button.addEventListener('click', () => {
+            closeMobileOptions();
+        });
+    });
+    
+    // Also handle specific button click events as needed
+    if (imageButton) {
+        imageButton.addEventListener('click', () => {
+            // Existing image upload handling logic
+            imageInputElement.click();
+            closeMobileOptions();
+        });
+    }
+    
+    if (fileInputElement) {
+        fileInputElement.addEventListener('click', () => {
+            // Existing file upload handling logic  
+            fileInputElement.click();
+            closeMobileOptions();
+        });
+    }
+    
+    // Handle other specific toolbar buttons similarly
+    // ... existing code ...
+
     // Initial UI state updates
     adjustTextAreaHeight();
     updateInputUIForModel(state.getActiveCustomGptConfig()); // Pass active config initially

@@ -749,25 +749,22 @@
     /* 1. Hide the standard toolbar by default on mobile */
     .input-container .bottom-toolbar {
         display: none; /* Hide it initially */
-        /* Styles for when it becomes visible (as a popup) */
+        /* New streamlined popup design */
         position: absolute;
-        bottom: 65px; /* Position popup just above the initial input area height */
-        left: 16px;
-        right: 16px;
+        bottom: 60px; /* Position above input area */
+        left: 10px; /* Align with the + button */
         background-color: var(--background-primary);
         border: 1px solid var(--border-primary);
-        border-radius: 8px;
-        padding: 10px;
-        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        border-radius: 22px; /* More rounded for modern look */
+        padding: 6px 8px; /* Tighter padding */
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
         z-index: 10;
-        flex-wrap: wrap;
-        gap: 8px;
-        justify-content: flex-start;
     }
 
     /* 2. Style for when the toolbar IS shown via JS */
     .input-container .bottom-toolbar.mobile-visible {
         display: flex; /* Show the toolbar as a flex container */
+        align-items: center; /* Center the icons vertically */
     }
 
     /* 3. Show and Position the '+' button on mobile */
@@ -843,29 +840,56 @@
 
     .input-container .bottom-toolbar.mobile-visible .tool-button {
         font-size: 0;
-        padding: 8px;
-        min-width: 40px;
-        width: 40px;
-        height: 40px; /* Consistent height */
+        padding: 6px;
+        min-width: 36px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         display: flex;
         justify-content: center;
         align-items: center;
-        margin: 0 6px; /* Add even spacing between buttons */
-        background-color: var(--background-tertiary);
-        border: 1px solid var(--border-primary);
-        transition: background-color 0.2s ease;
+        margin: 0 3px; /* Closer spacing */
+        background: none; /* Remove background */
+        border: none; /* Remove border */
+        color: var(--text-muted);
+        transition: transform 0.2s ease, color 0.2s ease;
     }
 
-    .input-container .bottom-toolbar.mobile-visible .tool-button:hover {
-        background-color: var(--background-hover);
+    .input-container .bottom-toolbar.mobile-visible .tool-button:hover,
+    .input-container .bottom-toolbar.mobile-visible .tool-button:active {
+        color: var(--accent-color); /* Use accent color on hover/active */
+        transform: scale(1.1); /* Subtle scale effect */
+        background: none; /* Keep consistent no background */
     }
 
     .input-container .bottom-toolbar.mobile-visible .tool-button svg {
         margin: 0;
-        width: 20px; /* Consistent icon size */
-        height: 20px; /* Consistent icon size */
-        stroke-width: 2px; /* Make icons more visible */
+        width: 22px; /* Consistent icon size */
+        height: 22px; /* Consistent icon size */
+        stroke-width: 2px;
+        stroke: currentColor;
+    }
+
+    /* Show tooltip on long press (or hover on devices that support it) */
+    .input-container .bottom-toolbar.mobile-visible .tool-button::after {
+        content: attr(title);
+        position: absolute;
+        bottom: -24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 3px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+    }
+
+    .input-container .bottom-toolbar.mobile-visible .tool-button:hover::after {
+        opacity: 0; /* Hide by default, can enable if wanted */
     }
 
     /* Hide specific less-used buttons even in popup */
