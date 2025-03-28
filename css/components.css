@@ -107,24 +107,27 @@
 }
 
 /* Input Area Components */
+.input-container {
+    position: relative;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+}
+
 .input-box {
     width: 100%;
     border: 1px solid var(--border-primary);
     border-radius: 24px;
     padding: 14px 50px 14px 16px;
-    /* Default padding: space for send button right */
     font-size: 16px;
     background-color: var(--background-primary);
     resize: none;
-    /* Disable manual resizing */
     min-height: 53px;
-    /* Initial height */
     max-height: 200px;
-    /* Limit expansion */
     overflow-y: auto;
-    /* Scroll if content exceeds max-height */
-    line-height: 1.4;
-    /* Adjust line height for better readability */
+    display: flex;
+    align-items: center;
+    line-height: normal;
 }
 
 .input-box:focus {
@@ -136,7 +139,7 @@
 .send-button {
     position: absolute;
     right: 16px;
-    top: 50%;  /* Change from 42px to 50% */
+    top: 50%;
     transform: translateY(-50%);
     background: none;
     border: none;
