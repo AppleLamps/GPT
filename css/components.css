@@ -136,16 +136,13 @@
 .send-button {
     position: absolute;
     right: 16px;
-    /* Align with container padding */
-    top: 42px;
-    /* Approx vertical center of initial input box */
+    top: 50%;  /* Change from 42px to 50% */
     transform: translateY(-50%);
     background: none;
     border: none;
     cursor: pointer;
     color: var(--text-muted);
     padding: 5px;
-    /* Clickable area */
     z-index: 6;
 }
 
