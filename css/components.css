@@ -759,7 +759,7 @@
         display: flex;
         /* Show the button */
         position: absolute;
-        top: 54px;
+        top: 56px;
         /* Approx vertical center of initial input box */
         transform: translateY(-50%);
         /* Center vertically */
@@ -785,7 +785,7 @@
         /* Approx vertical center of initial input box */
         transform: translateY(-50%);
         /* Center vertically */
-        right: 14px;
+        right: 10px;
         /* Align with container padding on the right */
         /* Remove default bottom positioning */
         bottom: auto;
@@ -794,7 +794,7 @@
 
     /* 6. Adjust overall input area height and chat container height */
     :root {
-        --input-area-height-mobile: 85px;
+        --input-area-height-mobile: 75px;
         /* Approximate initial height */
     }
 
