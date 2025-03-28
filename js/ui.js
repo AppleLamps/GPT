@@ -184,3 +184,62 @@ export function removeImagePreview() {
         imageInput.value = '';
     }
 }
+
+// --- Notifications ---
+export function showNotification(message, type = 'info') {
+    const notificationContainer = document.createElement('div');
+    notificationContainer.className = `notification ${type}`;
+    
+    notificationContainer.innerHTML = `
+        <div class="notification-content">${message}</div>
+        <button class="notification-close">&times;</button>
+    `;
+    
+    document.body.appendChild(notificationContainer);
+    
+    // Add animation class after a small delay to trigger the animation
+    setTimeout(() => {
+        notificationContainer.classList.add('visible');
+    }, 10);
+    
+    // Set up the close button
+    const closeButton = notificationContainer.querySelector('.notification-close');
+    closeButton?.addEventListener('click', () => {
+        notificationContainer.classList.remove('visible');
+        setTimeout(() => {
+            document.body.removeChild(notificationContainer);
+        }, 300); // Match the CSS transition duration
+    });
+    
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+        if (document.body.contains(notificationContainer)) {
+            notificationContainer.classList.remove('visible');
+            setTimeout(() => {
+                if (document.body.contains(notificationContainer)) {
+                    document.body.removeChild(notificationContainer);
+                }
+            }, 300);
+        }
+    }, 3000);
+}
+
+// --- Mobile Toolbar Handling ---
+export function setupMobileOptionsClickOutside() {
+    // Add a document click handler to close the mobile toolbar when clicking outside
+    document.addEventListener('click', (event) => {
+        const bottomToolbar = document.querySelector('.bottom-toolbar');
+        const mobileToggleBtn = document.getElementById('mobileOptionsToggleBtn');
+        
+        // If the mobile toolbar is visible
+        if (bottomToolbar && bottomToolbar.classList.contains('mobile-visible')) {
+            // Check if the click is outside both the toolbar and the toggle button
+            if (!bottomToolbar.contains(event.target) && 
+                mobileToggleBtn !== event.target && 
+                !mobileToggleBtn.contains(event.target)) {
+                // Hide the toolbar
+                bottomToolbar.classList.remove('mobile-visible');
+            }
+        }
+    });
+}

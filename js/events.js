@@ -16,6 +16,19 @@ function resetChatStateAndUI() {
 
 function handleOverlayClick() {
     ui.toggleSidebar(false);
+    // Also hide mobile toolbar overlay if shown
+    const bottomToolbar = document.querySelector('.bottom-toolbar');
+    if (bottomToolbar && bottomToolbar.classList.contains('mobile-visible')) {
+        bottomToolbar.classList.remove('mobile-visible');
+    }
+}
+
+// New function to handle mobile options toggle
+function handleMobileOptionsToggle() {
+    const bottomToolbar = document.querySelector('.bottom-toolbar');
+    if (bottomToolbar) {
+        bottomToolbar.classList.toggle('mobile-visible');
+    }
 }
 
 function handleSettingsOpen() {
@@ -155,6 +168,9 @@ function handleDelegatedClicks(event) {
         case 'closeModalBtn': handleSettingsClose(); break;
         case 'saveSettingsBtn': handleSettingsSave(); break;
 
+        // Mobile options
+        case 'mobileOptionsToggleBtn': handleMobileOptionsToggle(); break;
+
         // Input area
         case 'sendButton': handleSendMessage(); break;
         case 'imageButton': ui.imageInput?.click(); break;
@@ -189,6 +205,9 @@ export function initializeEventListeners() {
     ui.imageInput?.addEventListener('change', handleImageUpload);
 
     document.querySelector('.example-prompts')?.addEventListener('click', handleExamplePromptClick);
+
+    // Setup mobile options click outside handler
+    ui.setupMobileOptionsClickOutside();
 
     // Dynamic element listeners (copy/regenerate/remove-image) attached in ui.js
 }

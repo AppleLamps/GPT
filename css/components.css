@@ -764,6 +764,33 @@
 
 /* Adjust breakpoint as needed (e.g., 768px, 600px) */
 @media (max-width: 600px) {
+    /* Show the mobile options toggle button */
+    .mobile-options-toggle {
+        display: flex;
+    }
+
+    /* Hide the bottom toolbar on mobile by default */
+    .bottom-toolbar {
+        display: none;
+    }
+    
+    /* When made visible through JS */
+    .bottom-toolbar.mobile-visible {
+        display: flex;
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        right: 0;
+        background-color: var(--background-primary);
+        border: 1px solid var(--border-primary);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: 8px;
+        margin-bottom: 8px;
+        z-index: 10;
+        flex-wrap: wrap;
+        justify-content: space-around;
+    }
 
     /* 1. Hide specific buttons on mobile */
     #researchButton,
@@ -815,4 +842,31 @@
         gap: 8px;
         /* Slightly reduce gap */
     }
+}
+
+.mobile-options-toggle {
+    display: none; /* Hidden by default, shown only on mobile */
+}
+
+/* Mobile-specific styling for the popup overlay */
+.mobile-options-overlay {
+    display: none; /* Hidden by default */
+    position: absolute;
+    bottom: 100%; /* Position above the input area */
+    left: 0;
+    right: 0;
+    background-color: var(--background-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 8px;
+    margin-bottom: 8px;
+    z-index: 10;
+}
+
+.mobile-options-overlay.visible {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    gap: 8px;
 }
