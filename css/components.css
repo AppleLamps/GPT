@@ -733,8 +733,8 @@
         /* Hide it initially */
         /* Styles for when it becomes visible (as a popup) */
         position: absolute;
-        bottom: 70px;
-        /* Raise popup slightly higher */
+        bottom: 65px;
+        /* Position popup just above the initial input area height */
         left: 16px;
         right: 16px;
         background-color: var(--background-primary);
@@ -757,65 +757,85 @@
     /* 3. Show and Position the '+' button on mobile */
     #mobileOptionsToggleBtn {
         display: flex;
-        /* Show the button */
         position: absolute;
-        top: 56px;
-        /* Approx vertical center of initial input box */
+        top: 43px;
+        /* Vertically center within initial textarea height (approx) */
         transform: translateY(-50%);
-        /* Center vertically */
-        left: 16px;
-        /* Align with container padding */
+        /* Precise vertical centering */
+        left: 22px;
+        /* Position *inside* container padding */
         z-index: 6;
-        /* --- Inherit styles from .circle-button --- */
-        /* width, height, border-radius, background, border, align-items, justify-content, cursor, color */
+        /* Style like a circle button */
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: var(--background-tertiary);
+        border: 1px solid var(--border-primary);
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: var(--text-primary);
     }
+
+    #mobileOptionsToggleBtn:hover {
+        background-color: #e0e0e0;
+    }
+
+    #mobileOptionsToggleBtn svg {
+        stroke: currentColor;
+    }
+
 
     /* 4. Adjust input padding to make space for the buttons */
     .input-container .input-box {
-        padding-left: 60px;
-        /* Space for '+' button */
-        padding-right: 60px;
-        /* Space for Send button */
+        padding-left: 70px;
+        /* Increased padding for button + gap */
+        padding-right: 70px;
+        /* Increased padding for button + gap */
+        /* Keep existing top/bottom padding */
+        /* padding-top: 14px; */
+        /* padding-bottom: 14px; */
     }
 
     /* 5. Adjust Send Button position specifically for mobile */
     .input-container .send-button {
-        /* Position from top, center vertically like the toggle button */
-        top: 52px;
-        /* Approx vertical center of initial input box */
+        top: 43px;
+        /* Vertically center with toggle button (approx) */
         transform: translateY(-50%);
-        /* Center vertically */
-        right: 10px;
-        /* Align with container padding on the right */
-        /* Remove default bottom positioning */
+        /* Precise vertical centering */
+        right: 22px;
+        /* Position *inside* container padding */
         bottom: auto;
+        /* Remove default bottom positioning */
+        /* z-index, padding, color etc inherit */
     }
 
 
-    /* 6. Adjust overall input area height and chat container height */
-    :root {
-        --input-area-height-mobile: 60px;
-        /* Approximate initial height */
-    }
-
+    /* 6. Adjust overall input area height */
     .input-container {
-        min-height: var(--input-area-height-mobile);
         height: auto;
-        /* Allow height to grow with textarea */
+        /* Allow height to grow based on textarea content */
+        /* min-height might not be needed if textarea has min-height */
+        padding-bottom: 10px;
+        /* Reduce bottom padding slightly */
     }
 
-    .chat-container {
-        /* Adjust height calculation - This might still need fine-tuning depending on dynamic input height */
-        height: calc(100vh - var(--header-height) - var(--input-area-height-mobile));
-    }
+    /* 7. Chat container height - Remove mobile override (use desktop calc) */
+    /* Let the default rule in layout.css handle this: */
+    /* .chat-container {
+         height: calc(100vh - var(--header-height) - var(--input-area-height));
+       }
+    */
 
-    /* Hide text on tool-buttons within the popup */
+
+    /* 8. Style buttons within the popup */
     .input-container .bottom-toolbar.mobile-visible .tool-button {
         font-size: 0;
         padding: 8px;
         min-width: 40px;
         width: 40px;
-        height: 30px;
+        height: 40px;
+        /* Correct height */
         border-radius: 50%;
         justify-content: center;
     }
