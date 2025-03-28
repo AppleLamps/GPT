@@ -759,7 +759,7 @@
         display: flex;
         /* Show the button */
         position: absolute;
-        top: 48px;
+        top: 54px;
         /* Approx vertical center of initial input box */
         transform: translateY(-50%);
         /* Center vertically */
@@ -781,11 +781,11 @@
     /* 5. Adjust Send Button position specifically for mobile */
     .input-container .send-button {
         /* Position from top, center vertically like the toggle button */
-        top: 48px;
+        top: 52px;
         /* Approx vertical center of initial input box */
         transform: translateY(-50%);
         /* Center vertically */
-        right: 16px;
+        right: 14px;
         /* Align with container padding on the right */
         /* Remove default bottom positioning */
         bottom: auto;
