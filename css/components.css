@@ -914,6 +914,31 @@
     .send-button {
         right: 5px;
     }
+
+    /* Maintain bottom spacing regardless of content */
+    .input-container {
+        padding-bottom: 20px; /* Increase padding at bottom */
+        margin-bottom: 10px; /* Add margin for extra space */
+    }
+    
+    /* Ensure image preview doesn't compress input area */
+    #imagePreview {
+        margin-bottom: 10px;
+        min-height: 0; /* Allow collapse when empty */
+    }
+    
+    /* Make sure the AI voices note is always visible */
+    .input-footer-note {
+        position: relative;
+        margin-top: 15px;
+        padding-bottom: 5px;
+        z-index: 1;
+    }
+    
+    /* Prevent the window from cutting off content */
+    body {
+        padding-bottom: env(safe-area-inset-bottom, 15px);
+    }
 }
 
 /* --- End Mobile Input Toolbar Adjustments --- */
