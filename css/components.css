@@ -853,6 +853,25 @@
         height: auto;
         padding-bottom: 5px;
     }
+
+    /* Make sure image preview doesn't affect button positioning */
+    #imagePreview {
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Keep the input container position relative for absolute positioning of buttons */
+    .input-container {
+        position: relative;
+    }
+    
+    /* Ensure buttons stay aligned regardless of content */
+    #mobileOptionsToggleBtn, 
+    .send-button {
+        top: calc(50% + 10px); /* Adjust this value as needed */
+        position: absolute;
+        z-index: 10; /* Ensure buttons are above other elements */
+    }
 }
 
 /* --- End Mobile Input Toolbar Adjustments --- */
