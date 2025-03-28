@@ -9,7 +9,6 @@ import { initializeWelcomeScreen } from './components/welcomeScreen.js';
 import { initializeHeader } from './components/header.js';
 // <<< NEW: Import initializer for Custom GPT Creator Screen >>>
 import { initializeCreatorScreen } from './customGpt/creatorScreen.js';
-import { initializeEvents } from './events.js';
 
 /**
  * Main application entry point.
@@ -34,9 +33,6 @@ function initializeApp() {
 
     // <<< NEW: Initialize the Custom GPT Creator Screen Modal >>>
     initializeCreatorScreen(); // Initializes the separate modal for creating/editing GPTs
-
-    // Initialize events including the new swipe gestures
-    initializeEvents();
 
     // Set initial view (could depend on whether a custom GPT is active)
     const activeGpt = state.getActiveCustomGptConfig();

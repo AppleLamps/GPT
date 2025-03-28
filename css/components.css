@@ -840,51 +840,56 @@
 
     .input-container .bottom-toolbar.mobile-visible .tool-button {
         font-size: 0;
-        padding: 8px;  /* Slightly larger touch target */
-        min-width: 40px;
-        width: 40px;
-        height: 40px;
+        padding: 6px;
+        min-width: 36px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         display: flex;
         justify-content: center;
         align-items: center;
-        margin: 0 4px; /* Slightly more spacing */
-        background: none;
-        border: none;
+        margin: 0 3px; /* Closer spacing */
+        background: none; /* Remove background */
+        border: none; /* Remove border */
         color: var(--text-muted);
         transition: transform 0.2s ease, color 0.2s ease;
-        position: relative; /* For tooltip positioning */
     }
 
-    /* Add a subtle background on hover for better visual feedback */
     .input-container .bottom-toolbar.mobile-visible .tool-button:hover,
     .input-container .bottom-toolbar.mobile-visible .tool-button:active {
-        color: var(--accent-color);
-        transform: scale(1.1);
-        background-color: rgba(0, 0, 0, 0.05); /* Subtle background */
+        color: var(--accent-color); /* Use accent color on hover/active */
+        transform: scale(1.1); /* Subtle scale effect */
+        background: none; /* Keep consistent no background */
     }
 
-    /* Improve the tooltips to make them actually visible on mobile */
+    .input-container .bottom-toolbar.mobile-visible .tool-button svg {
+        margin: 0;
+        width: 22px; /* Consistent icon size */
+        height: 22px; /* Consistent icon size */
+        stroke-width: 2px;
+        stroke: currentColor;
+    }
+
+    /* Show tooltip on long press (or hover on devices that support it) */
     .input-container .bottom-toolbar.mobile-visible .tool-button::after {
         content: attr(title);
         position: absolute;
-        bottom: -28px;
+        bottom: -24px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.8);
+        background: rgba(0, 0, 0, 0.7);
         color: white;
-        padding: 4px 8px;
+        padding: 3px 6px;
         border-radius: 4px;
-        font-size: 12px;
+        font-size: 10px;
         white-space: nowrap;
         opacity: 0;
         pointer-events: none;
         transition: opacity 0.3s;
     }
 
-    /* Show tooltip on long press */
-    .input-container .bottom-toolbar.mobile-visible .tool-button:active::after {
-        opacity: 1;
+    .input-container .bottom-toolbar.mobile-visible .tool-button:hover::after {
+        opacity: 0; /* Hide by default, can enable if wanted */
     }
 
     /* Hide specific less-used buttons even in popup */
@@ -930,59 +935,6 @@
         position: relative;
         top: unset;
         z-index: 6;
-    }
-
-    /* Adjust message bubbles */
-    .user-bubble, .ai-message {
-        max-width: 90%; /* Wider bubbles on mobile */
-    }
-    
-    /* Improve code blocks on mobile */
-    .ai-message-content pre {
-        font-size: 14px; /* Slightly smaller font */
-        padding: 12px;
-        margin: 10px 0;
-        border-radius: 6px;
-        overflow-x: auto; /* Enable horizontal scrolling */
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-        white-space: pre; /* Preserve formatting */
-        max-width: 100%; /* Ensure it doesn't overflow the container */
-    }
-    
-    /* Add visual indicator for scrollable code blocks */
-    .ai-message-content pre::after {
-        content: '';
-        position: absolute;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        width: 20px;
-        background: linear-gradient(to right, transparent, var(--background-tertiary));
-        pointer-events: none;
-        opacity: 0.7;
-    }
-    
-    /* Adjust inline code on mobile */
-    .ai-message-content code:not(pre code) {
-        padding: 2px 4px;
-        font-size: 90%;
-        word-break: break-word;
-    }
-    
-    /* Improve images in messages */
-    .user-bubble .history-image {
-        max-width: 100%;
-        height: auto;
-        border-radius: 12px;
-    }
-    
-    /* Make tables scrollable horizontally */
-    .ai-message-content table {
-        display: block;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        border-collapse: collapse;
-        width: 100%;
     }
 }
 
