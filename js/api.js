@@ -1,6 +1,7 @@
 // ===== FILE: js/api.js =====
 // MODIFIED: Use accumulateChunkAndGetEscaped during stream, parseFinalHtml at the end.
 // MODIFIED: Corrected image payload structure for /v1/responses API based on documentation and errors.
+// FIXED: buildResponsesApiInput now reads image data from the history entry passed to it.
 import * as state from './state.js';
 // Use new functions from messageList for appending/finalizing
 import { showTypingIndicator, removeTypingIndicator, createAIMessageContainer, appendAIMessageContent, finalizeAIMessageContent, setupMessageActions } from './components/messageList.js';
@@ -32,7 +33,8 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
 
     const activeConfig = state.getActiveCustomGptConfig();
     const history = state.getChatHistory();
-    const image = state.getCurrentImage(); // { data: base64string, name: filename }
+    // <<< REMOVED: Don't get staged image here, get it from history entry later >>>
+    // const image = state.getCurrentImage();
     const isImageGenMode = state.getIsImageGenerationMode();
 
     // --- Determine effective settings based on activeConfig ---
@@ -40,6 +42,8 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
     let finalSystemPrompt = null;
     let knowledgeContent = "";
     let capabilities = { webSearch: useWebSearch };
+
+    const lastUserMessageEntry = history.filter(m => m.role === 'user').pop(); // Get the last user message from history
 
     if (activeConfig) {
         console.log(`Using Custom GPT Config: "${activeConfig.name}"`);
@@ -61,7 +65,8 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
         }
 
         // Force gpt-4o if config uses features not compatible with o3-mini
-        if (finalModel === 'o3-mini-high' && (image || capabilities.webSearch || knowledgeContent || finalSystemPrompt)) {
+        // <<< MODIFIED: Check image from history entry >>>
+        if (finalModel === 'o3-mini-high' && (lastUserMessageEntry?.imageData || capabilities.webSearch || knowledgeContent || finalSystemPrompt)) {
             console.warn(`Custom GPT "${activeConfig.name}" uses features likely requiring gpt-4o. Forcing model to gpt-4o.`);
             finalModel = 'gpt-4o';
         }
@@ -81,11 +86,18 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
     }
     // --- End Determining Settings ---
 
-    const lastUserMessageEntry = history.filter(m => m.role === 'user').pop();
-    const lastUserMessageContent = lastUserMessageEntry?.content || "";
-    const effectiveInputExists = lastUserMessageContent || lastUserMessageEntry?.imageData || knowledgeContent || finalSystemPrompt;
+    // <<< MODIFIED: Check existence of lastUserMessageEntry and its imageData >>>
+    if (!history.length || !lastUserMessageEntry) {
+        console.error("Cannot call API: No user message history found.");
+        showNotification("Please type a message or upload an image first.", 'info');
+        return;
+    }
 
-    if (!history.length || !effectiveInputExists) {
+    const lastUserMessageContent = lastUserMessageEntry.content || "";
+    // <<< MODIFIED: Check for input relies on the existence of the history entry >>>
+    const effectiveInputExists = lastUserMessageContent || lastUserMessageEntry.imageData || knowledgeContent || finalSystemPrompt;
+
+    if (!effectiveInputExists) {
         console.error("Cannot call API: No effective user input (text, image, knowledge, or system prompt) in the last turn.");
         showNotification("Please type a message, upload an image, or ensure your Custom GPT provides context.", 'info');
         return;
@@ -107,11 +119,11 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
                 // Using finalize directly since it's not streaming
                 finalizeAIMessageContent(aiMessageElement, content);
                 console.log("Image content finalized.");
-                
+
                 // Setup actions with isImageMessage flag
                 setupMessageActions(aiMessageElement, result.imageUrl, true);
                 console.log("Image actions set up.");
-                
+
                 // Add to history with imageUrl
                 console.log("Adding image message to history...");
                 state.addMessageToHistory({
@@ -120,11 +132,10 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
                     imageUrl: result.imageUrl
                 });
                 console.log("Image message added to history.");
-                
-                // --- >>> STORE URL FOR NEXT TURN <<< ---
+
+                // Store URL for next turn
                 state.setLastGeneratedImageUrl(result.imageUrl);
-                // --- >>> END STORE URL <<< ---
-                
+
             } else {
                 console.error("Failed to create AI message container for the image!");
                 showNotification("Failed to display generated image.", "error");
@@ -140,6 +151,7 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
     // --- API Routing for chat/responses ---
     if (finalModel === 'o3-mini-high') {
         console.log("Routing to Chat Completions API for o3-mini");
+        // Pass the specific last user message entry for modification if needed
         const messagesPayload = buildMessagesPayload(history, finalSystemPrompt, knowledgeContent);
         state.setPreviousResponseId(null);
         await fetchChatCompletions(apiKey, messagesPayload);
@@ -148,7 +160,7 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
         console.log(`Routing to Responses API for gpt-4o ${capabilities.webSearch ? 'with Web Search' : ''}`);
         const previousId = state.getPreviousResponseId();
 
-        // Build payload
+        // <<< MODIFIED: Pass lastUserMessageEntry directly >>>
         let inputPayload = buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt);
         if (!inputPayload) {
             showNotification("Failed to prepare message data for API.", "error");
@@ -295,11 +307,14 @@ function buildMessagesPayload(history, systemPrompt, knowledgeContent) {
     if (systemPrompt) {
         payload.push({ role: "system", content: systemPrompt });
     }
-    let historyCopy = history.map(m => ({ ...m }));
+
+    // Need to filter out imageData for o3-mini
+    let historyCopy = history.map(m => ({ role: m.role, content: m.content }));
+
     if (knowledgeContent && historyCopy.length > 0) {
         const lastUserIndex = historyCopy.findLastIndex(m => m.role === 'user');
         if (lastUserIndex !== -1) {
-            historyCopy[lastUserIndex].content = knowledgeContent + "\n\n" + historyCopy[lastUserIndex].content;
+            historyCopy[lastUserIndex].content = knowledgeContent + "\n\n" + (historyCopy[lastUserIndex].content || ''); // Prepend knowledge
             console.log("Knowledge content prepended to last user message for Chat Completions.");
         } else { console.warn("Could not find user message to prepend knowledge to."); }
     }
@@ -308,26 +323,38 @@ function buildMessagesPayload(history, systemPrompt, knowledgeContent) {
 }
 
 /**
- * <<< MODIFIED >>>
+ * <<< MODIFIED & FIXED >>>
  * Builds the 'input' array for Responses API.
+ * Reads image data from the provided history entry.
  * Prepends system prompt and knowledge content to the user message content.
  * Correctly formats image content using 'image_url' as a STRING containing the Data URL.
  * Returns null on failure.
  */
 function buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, systemPrompt) {
+    // --- Debug Logs Start ---
+    console.log("--- Inside buildResponsesApiInput ---");
+    console.log("Received lastUserMessageEntry:", lastUserMessageEntry);
+    // --- Debug Logs End ---
+
     let inputPayload = [];
     let contentArray = [];
     const userContent = lastUserMessageEntry?.content || "";
+    // <<< FIXED: Get image data directly from the history entry >>>
     const imageDataBase64 = lastUserMessageEntry?.imageData;
 
-    // --- Inject Last Generated Image URL ---
+    // --- Debug Log ---
+    console.log("Extracted imageDataBase64:", imageDataBase64 ? "Image data found" : "No image data found in history entry");
+    // --- Debug Log ---
+
+    // --- Inject Last Generated Image URL (If applicable) ---
     const imageUrlToInject = state.getLastGeneratedImageUrl();
     if (imageUrlToInject) {
         contentArray.push({
             type: "input_image",
             image_url: imageUrlToInject
         });
-        state.clearLastGeneratedImageUrl();
+        state.clearLastGeneratedImageUrl(); // Clear after use
+        console.log("Injected previously generated image URL into input.");
     }
 
     // --- Combine text content ---
@@ -349,7 +376,7 @@ function buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, systemPr
         });
     }
 
-    // --- Add image from history entry ---
+    // --- FIXED: Add image from history entry ---
     if (imageDataBase64) {
         try {
             if (!imageDataBase64.startsWith('data:image/')) {
@@ -357,26 +384,32 @@ function buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, systemPr
             }
             contentArray.push({
                 type: "input_image",
-                image_url: imageDataBase64
+                image_url: imageDataBase64 // Use the data from the history entry
             });
-            console.log(`Image included in user message content array for Responses API from history entry.`);
+            console.log(`Added input_image to contentArray from history entry.`); // <-- Debug Log
 
         } catch (error) {
             console.error("Error processing image from history for API payload:", error);
             showNotification("Error preparing image data for API. Please try again.", "error");
-            return null;
+            return null; // Indicate payload creation failed
         }
     }
+    // --- End Image Part ---
+
+    // --- Debug Log ---
+    console.log("Final contentArray before creating message object:", contentArray);
+    // --- Debug Log ---
 
     // --- Build final message object ---
     if (contentArray.length > 0) {
         inputPayload.push({
             type: "message",
             role: "user",
-            content: contentArray
+            content: contentArray // Content is always an array if image or text exists
         });
     } else {
         console.warn("buildResponsesApiInput: No text or valid image data to send. Payload empty.");
+        // Return null or empty array? Returning empty array which API should handle.
     }
 
     return inputPayload;
@@ -434,10 +467,13 @@ async function fetchChatCompletions(apiKey, messagesPayload) {
         if (!streamStarted) removeTypingIndicator();
         if (aiMessageElement) {
             const finalRawText = getAccumulatedRawText();
-            if (finalRawText) { const finalHtml = parseFinalHtml(); finalizeAIMessageContent(aiMessageElement, finalHtml); state.addMessageToHistory({ role: "assistant", content: finalRawText }); setupMessageActions(aiMessageElement, finalRawText); }
-            else if (streamStarted) { finalizeAIMessageContent(aiMessageElement, "[Empty Response]"); state.addMessageToHistory({ role: "assistant", content: "" }); setupMessageActions(aiMessageElement, ""); }
-        } else if (streamStarted && !accumulatedContent) { showNotification("Received an empty response from the AI.", 'info'); }
-        else if (!streamStarted) { console.log("Chat completions stream ended without any content delta."); }
+            if (finalRawText || streamStarted) { // Finalize even if response was empty but stream started
+                const finalHtml = parseFinalHtml();
+                finalizeAIMessageContent(aiMessageElement, finalHtml || "[Empty Response]");
+                state.addMessageToHistory({ role: "assistant", content: finalRawText });
+                setupMessageActions(aiMessageElement, finalRawText);
+            }
+        } else if (!streamStarted) { console.log("Chat completions stream ended without any content delta."); }
     } catch (error) {
         console.error('Error during Chat Completions API call:', error); removeTypingIndicator();
         if (!error.message.startsWith('HTTP error') && !error.message.startsWith('Authentication Error') && !error.message.startsWith('Rate Limit Exceeded') && !error.message.startsWith('Context length exceeded')) { showNotification(`An unexpected error occurred: ${error.message}`, 'error'); }
@@ -470,23 +506,26 @@ function processChatCompletionsEvent(line, aiMessageElement, streamStarted, accu
             const delta = parsed.choices?.[0]?.delta;
             const finishReason = parsed.choices?.[0]?.finish_reason;
 
-            if (delta?.content) {
+            // Handle content delta
+            if (delta && (delta.content || typeof delta.content === 'string')) { // Check even if empty string
                 if (!streamStarted) {
                     removeTypingIndicator();
                     aiMessageElement = createAIMessageContainer();
                     if (!aiMessageElement) throw new Error("UI container creation failed.");
                     streamStarted = true;
                 }
-                currentAccumulatedContent = true;
-                const escapedChunk = accumulateChunkAndGetEscaped(delta.content);
-                if (aiMessageElement && escapedChunk) {
-                    appendAIMessageContent(aiMessageElement, escapedChunk);
+                if (delta.content) { // Only mark as contentful if non-empty
+                    currentAccumulatedContent = true;
+                    const escapedChunk = accumulateChunkAndGetEscaped(delta.content);
+                    if (aiMessageElement && escapedChunk) {
+                        appendAIMessageContent(aiMessageElement, escapedChunk);
+                    }
                 }
             }
 
             if (finishReason) {
                 console.log("Chat Completions Stream finished with reason:", finishReason);
-                if (!streamStarted) removeTypingIndicator();
+                if (!streamStarted) removeTypingIndicator(); // Remove indicator if stream finished without content
                 isDone = true;
             }
             return { aiMessageElement, streamStarted, accumulatedContent: currentAccumulatedContent, streamEnded: isDone };
@@ -508,7 +547,7 @@ async function fetchResponsesApi(apiKey, requestBody) {
     let aiMessageElement = null;
     let streamEnded = false;
     try {
-        console.log("Sending API Request (Responses API):", JSON.stringify(requestBody, null, 2));
+        console.log("Sending API Request (Responses API):", JSON.stringify(requestBody, null, 2)); // Keep this log
         const response = await fetch(RESPONSES_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify(requestBody) });
         if (!response.ok) {
             removeTypingIndicator();
@@ -549,15 +588,27 @@ async function fetchResponsesApi(apiKey, requestBody) {
         removeTypingIndicator();
         if (finalResponseId) { state.setPreviousResponseId(finalResponseId); console.log("Responses API stream finished. Final Response ID:", finalResponseId); }
         else { console.warn("Responses API stream finished but no final response ID received in completed event."); }
+
         if (aiMessageElement) {
             const finalRawText = getAccumulatedRawText();
-            if (streamHasContent) { const finalHtml = parseFinalHtml(); finalizeAIMessageContent(aiMessageElement, finalHtml); state.addMessageToHistory({ role: "assistant", content: finalRawText }); setupMessageActions(aiMessageElement, finalRawText); }
-            else { finalizeAIMessageContent(aiMessageElement, "[AI responded without text content]"); state.addMessageToHistory({ role: "assistant", content: "" }); setupMessageActions(aiMessageElement, ""); console.log("Stream completed, AI message container exists but received no text deltas."); }
+            if (streamHasContent || finalResponseId) { // Finalize if content OR if stream completed successfully
+                const finalHtml = parseFinalHtml();
+                finalizeAIMessageContent(aiMessageElement, finalHtml || "[AI responded without text content]");
+                state.addMessageToHistory({ role: "assistant", content: finalRawText });
+                setupMessageActions(aiMessageElement, finalRawText);
+            } else {
+                // Only happens if stream errored *before* creating the message container
+                console.log("Stream completed without generating any message item or text content.");
+            }
         } else if (streamHasContent) {
+            // Should not happen if createAIMessageContainer is called early, but defensive coding
             console.error("Stream had content but UI element was missing at the end.");
             aiMessageElement = createAIMessageContainer();
             if (aiMessageElement) { const finalRawText = getAccumulatedRawText(); const finalHtml = parseFinalHtml(); finalizeAIMessageContent(aiMessageElement, finalHtml); state.addMessageToHistory({ role: "assistant", content: finalRawText }); setupMessageActions(aiMessageElement, finalRawText); }
-        } else { console.log("Stream completed without generating any message item or text content."); }
+        } else {
+            console.log("Stream completed without generating any message item or text content.");
+        }
+
     } catch (error) {
         console.error('Error during Responses API call:', error); removeTypingIndicator();
         streamEnded = true;
@@ -586,23 +637,46 @@ function processResponsesEvent(line, aiMessageElement, lastItemId, streamHasCont
         if (data === '[DONE]') { console.log("Received [DONE] signal."); isStreamEndEvent = true; return { aiMessageElement: updatedAiMessageElement, lastItemId: updatedLastItemId, streamHasContent: updatedStreamHasContent, finalResponseId, streamEnded: true }; }
         try {
             const parsed = JSON.parse(data); const eventType = parsed.type;
-            if (eventType === 'response.created') { removeTypingIndicator(); console.log("Response Created Event:", parsed.response?.id); }
+            if (eventType === 'response.created') {
+                removeTypingIndicator(); // Remove basic indicator once response starts
+                console.log("Response Created Event:", parsed.response?.id);
+            }
             else if (eventType === 'response.tool_use.started' && parsed.tool_use?.type === 'web_search_preview') { console.log("Web search started..."); showTypingIndicator("Searching the web..."); }
-            else if (eventType === 'response.tool_use.output' && parsed.tool_use?.type === 'web_search_preview') { console.log("Web search finished."); showTypingIndicator("Thinking..."); }
+            else if (eventType === 'response.tool_use.output' && parsed.tool_use?.type === 'web_search_preview') { console.log("Web search finished."); showTypingIndicator("Thinking..."); } // Change back to thinking
             else if (eventType === 'response.tool_use.failed' && parsed.tool_use?.type === 'web_search_preview') { console.error("Web search failed:", parsed.error); showTypingIndicator("Thinking..."); showNotification("Web search failed to complete.", "warning"); }
             else if (eventType === 'response.output_item.added' && parsed.item?.type === 'message') {
-                if (!updatedAiMessageElement) { updatedAiMessageElement = createAIMessageContainer(); updatedLastItemId = parsed.item?.id; if (!updatedAiMessageElement) throw new Error("UI container creation failed."); console.log("AI message container created for item ID:", updatedLastItemId); }
+                // Create container as soon as the message item is added
+                if (!updatedAiMessageElement) {
+                    removeTypingIndicator(); // Ensure indicator is gone
+                    updatedAiMessageElement = createAIMessageContainer();
+                    updatedLastItemId = parsed.item?.id;
+                    if (!updatedAiMessageElement) throw new Error("UI container creation failed.");
+                    console.log("AI message container created for item ID:", updatedLastItemId);
+                }
             }
             else if (eventType === 'response.output_text.delta' && parsed.item_id === updatedLastItemId) {
-                if (parsed.delta) {
-                    updatedStreamHasContent = true;
-                    if (!updatedAiMessageElement) { console.error("Received text delta but AI message element doesn't exist!"); updatedAiMessageElement = createAIMessageContainer(); if (!updatedAiMessageElement) throw new Error("UI container creation failed (defensive)."); }
-                    const escapedChunk = accumulateChunkAndGetEscaped(parsed.delta);
-                    if (updatedAiMessageElement && escapedChunk) { appendAIMessageContent(updatedAiMessageElement, escapedChunk); }
+                // Handle text delta, including empty string
+                if (parsed.delta || typeof parsed.delta === 'string') {
+                    if (!updatedAiMessageElement) {
+                        // Defensive: If somehow delta arrives before item.added event processed
+                        console.error("Received text delta but AI message element doesn't exist!");
+                        removeTypingIndicator();
+                        updatedAiMessageElement = createAIMessageContainer();
+                        if (!updatedAiMessageElement) throw new Error("UI container creation failed (defensive).");
+                    }
+                    if (parsed.delta) { // Only mark as contentful if non-empty
+                        updatedStreamHasContent = true;
+                        const escapedChunk = accumulateChunkAndGetEscaped(parsed.delta);
+                        if (updatedAiMessageElement && escapedChunk) {
+                            appendAIMessageContent(updatedAiMessageElement, escapedChunk);
+                        }
+                    }
                 }
             }
             else if (eventType === 'response.completed' || eventType === 'response.failed' || eventType === 'response.incomplete') {
-                isStreamEndEvent = true; removeTypingIndicator(); console.log("Responses API Stream Finish Event:", eventType, parsed.response);
+                isStreamEndEvent = true;
+                removeTypingIndicator(); // Final removal
+                console.log("Responses API Stream Finish Event:", eventType, parsed.response);
                 if (parsed.response?.id) { finalResponseId = parsed.response.id; }
                 if (eventType === 'response.failed') { showNotification(`AI response failed: ${parsed.error?.message || 'Unknown reason'}`, 'error'); }
                 else if (eventType === 'response.incomplete') { showNotification(`AI response may be incomplete: ${parsed.reason || 'Unknown reason'}`, 'warning'); }
