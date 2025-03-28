@@ -872,6 +872,48 @@
         position: absolute;
         z-index: 10; /* Ensure buttons are above other elements */
     }
+
+    /* Make the input container use flexbox for better arrangement */
+    .input-container {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+    
+    /* Keep image preview above but don't let it affect button positioning */
+    #imagePreview {
+        order: -1; /* Show at top */
+        margin-bottom: 5px;
+    }
+    
+    /* Create a container for the input and buttons */
+    .input-container .input-row {
+        display: flex;
+        position: relative;
+        align-items: center;
+    }
+    
+    /* Adjust input box to work with flexbox */
+    .input-container .input-box {
+        flex: 1;
+        margin: 0 50px; /* Make space for buttons */
+    }
+    
+    /* Position buttons within the input row */
+    #mobileOptionsToggleBtn,
+    .send-button {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    
+    #mobileOptionsToggleBtn {
+        left: 5px;
+    }
+    
+    .send-button {
+        right: 5px;
+    }
 }
 
 /* --- End Mobile Input Toolbar Adjustments --- */
