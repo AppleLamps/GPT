@@ -83,8 +83,7 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
 
     const lastUserMessageEntry = history.filter(m => m.role === 'user').pop();
     const lastUserMessageContent = lastUserMessageEntry?.content || "";
-    // Check if there's *any* user input (original text, image, or injected knowledge/system prompt)
-    const effectiveInputExists = lastUserMessageContent || image || knowledgeContent || finalSystemPrompt;
+    const effectiveInputExists = lastUserMessageContent || lastUserMessageEntry?.imageData || knowledgeContent || finalSystemPrompt;
 
     if (!history.length || !effectiveInputExists) {
         console.error("Cannot call API: No effective user input (text, image, knowledge, or system prompt) in the last turn.");
@@ -150,12 +149,11 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
         const previousId = state.getPreviousResponseId();
 
         // Build payload
-        let inputPayload = buildResponsesApiInput(lastUserMessageEntry, image, knowledgeContent, finalSystemPrompt);
-        if (!inputPayload) { // Check if payload creation failed
+        let inputPayload = buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt);
+        if (!inputPayload) {
             showNotification("Failed to prepare message data for API.", "error");
-            return; // Stop the API call
+            return;
         }
-
 
         const requestBody = {
             model: 'gpt-4o',
@@ -316,25 +314,23 @@ function buildMessagesPayload(history, systemPrompt, knowledgeContent) {
  * Correctly formats image content using 'image_url' as a STRING containing the Data URL.
  * Returns null on failure.
  */
-function buildResponsesApiInput(lastUserMessageEntry, image, knowledgeContent, systemPrompt) {
+function buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, systemPrompt) {
     let inputPayload = [];
-    let contentArray = []; // Holds parts of the user message content
+    let contentArray = [];
     const userContent = lastUserMessageEntry?.content || "";
+    const imageDataBase64 = lastUserMessageEntry?.imageData;
 
-    // --- >>> CHECK AND INJECT LAST GENERATED IMAGE URL <<< ---
+    // --- Inject Last Generated Image URL ---
     const imageUrlToInject = state.getLastGeneratedImageUrl();
     if (imageUrlToInject) {
-        console.log("Injecting last generated image URL into user message content (as input_image).");
         contentArray.push({
-            type: "input_image", // <<< CORRECT TYPE for /v1/responses API
+            type: "input_image",
             image_url: imageUrlToInject
         });
-        // --- >>> CLEAR THE STATE IMMEDIATELY AFTER USE <<< ---
         state.clearLastGeneratedImageUrl();
     }
-    // --- >>> END INJECTION <<< ---
 
-    // --- Combine all text content for the user message ---
+    // --- Combine text content ---
     let combinedUserContent = userContent;
     if (knowledgeContent) {
         combinedUserContent = knowledgeContent + "\n\n" + combinedUserContent;
@@ -344,9 +340,8 @@ function buildResponsesApiInput(lastUserMessageEntry, image, knowledgeContent, s
         combinedUserContent = systemPrompt + "\n\n" + combinedUserContent;
         console.log("System prompt prepended to user message content for Responses API.");
     }
-    // --- End Combination ---
 
-    // --- Add text part to content array (if exists) ---
+    // --- Add text part ---
     if (combinedUserContent) {
         contentArray.push({
             type: "input_text",
@@ -354,39 +349,31 @@ function buildResponsesApiInput(lastUserMessageEntry, image, knowledgeContent, s
         });
     }
 
-    // --- Add image part to content array (if exists) ---
-    if (image && image.data) {
+    // --- Add image from history entry ---
+    if (imageDataBase64) {
         try {
-            // Basic validation that it looks like a data URL
-            if (!image.data.startsWith('data:image/')) {
-                throw new Error("Invalid image data format provided to buildResponsesApiInput. Expected 'data:image/...'");
+            if (!imageDataBase64.startsWith('data:image/')) {
+                throw new Error("Invalid image data format found in history entry.");
             }
-
-            // <<< CORRECTED STRUCTURE based on error messages >>>
             contentArray.push({
                 type: "input_image",
-                image_url: image.data // Assign the full Data URL string directly
+                image_url: imageDataBase64
             });
-            console.log(`Image included in user message content array for Responses API using image_url string.`);
-
-            // <<< FIX: Clear image state *after* successfully incorporating data >>>
-            state.clearCurrentImage(); // <--- ADD THIS LINE BACK
-            // UI clearing (removeImagePreview) is handled separately in chatInput.js
+            console.log(`Image included in user message content array for Responses API from history entry.`);
 
         } catch (error) {
-            console.error("Error processing image for API payload:", error);
+            console.error("Error processing image from history for API payload:", error);
             showNotification("Error preparing image data for API. Please try again.", "error");
-            return null; // Indicate payload creation failed
+            return null;
         }
     }
-    // --- End Image Part ---
 
-    // --- Build the final message object ---
+    // --- Build final message object ---
     if (contentArray.length > 0) {
         inputPayload.push({
             type: "message",
             role: "user",
-            content: contentArray // Content is always an array if image or text exists
+            content: contentArray
         });
     } else {
         console.warn("buildResponsesApiInput: No text or valid image data to send. Payload empty.");
