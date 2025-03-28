@@ -841,6 +841,21 @@
     .bottom-toolbar {
         margin-top: 6px;  /* Reduce from 12px */
     }
+
+    /* Reduce space above the input area on mobile */
+    .chat-container {
+        padding-bottom: 10px;  /* Reduce space above input area */
+    }
+
+    .message-container:last-child {
+        padding-bottom: 10px;  /* Reduce padding of last message */
+    }
+
+    /* Keep your existing input container adjustments */
+    .input-container {
+        height: auto;
+        padding-bottom: 5px;
+    }
 }
 
 /* --- End Mobile Input Toolbar Adjustments --- */
