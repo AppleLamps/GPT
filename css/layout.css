@@ -29,10 +29,8 @@
     flex-direction: column;
     height: calc(100vh - var(--header-height) - var(--input-area-height));
     overflow: hidden;
-    /* Increase left and right padding AND add bottom padding */
-    padding: 0 32px 30px 32px;
-    /* Added 20px bottom padding */
-    /* You can adjust the 20px value */
+    /* Reduce bottom padding to prevent scroll */
+    padding: 0 32px 16px 32px;
 }
 
  /* Input area */
@@ -48,6 +46,7 @@
      /* Ensure it stays within the viewport width */
      max-width: 100%;
      box-sizing: border-box;
+     height: var(--input-area-height);
  }
 
  .input-row {
