@@ -729,12 +729,10 @@
 
     /* 1. Hide the standard toolbar by default on mobile */
     .input-container .bottom-toolbar {
-        display: none;
-        /* Hide it initially */
+        display: none; /* Hide it initially */
         /* Styles for when it becomes visible (as a popup) */
         position: absolute;
-        bottom: 65px;
-        /* Position popup just above the initial input area height */
+        bottom: 65px; /* Position popup just above the initial input area height */
         left: 16px;
         right: 16px;
         background-color: var(--background-primary);
@@ -750,20 +748,16 @@
 
     /* 2. Style for when the toolbar IS shown via JS */
     .input-container .bottom-toolbar.mobile-visible {
-        display: flex;
-        /* Show the toolbar as a flex container */
+        display: flex; /* Show the toolbar as a flex container */
     }
 
     /* 3. Show and Position the '+' button on mobile */
     #mobileOptionsToggleBtn {
         display: flex;
         position: absolute;
-        top: 43px;
-        /* Vertically center within initial textarea height (approx) */
-        transform: translateY(-50%);
-        /* Precise vertical centering */
-        left: 22px;
-        /* Position *inside* container padding */
+        top: 43px; /* Vertically center within initial textarea height (approx) */
+        transform: translateY(-50%); /* Precise vertical centering */
+        left: 22px; /* Position *inside* container padding */
         z-index: 6;
         /* Style like a circle button */
         width: 40px;
@@ -776,11 +770,9 @@
         cursor: pointer;
         color: var(--text-primary);
     }
-
     #mobileOptionsToggleBtn:hover {
         background-color: #e0e0e0;
     }
-
     #mobileOptionsToggleBtn svg {
         stroke: currentColor;
     }
@@ -788,10 +780,8 @@
 
     /* 4. Adjust input padding to make space for the buttons */
     .input-container .input-box {
-        padding-left: 70px;
-        /* Increased padding for button + gap */
-        padding-right: 70px;
-        /* Increased padding for button + gap */
+        padding-left: 70px;  /* Increased padding for button + gap */
+        padding-right: 70px; /* Increased padding for button + gap */
         /* Keep existing top/bottom padding */
         /* padding-top: 14px; */
         /* padding-bottom: 14px; */
@@ -799,25 +789,19 @@
 
     /* 5. Adjust Send Button position specifically for mobile */
     .input-container .send-button {
-        top: 43px;
-        /* Vertically center with toggle button (approx) */
-        transform: translateY(-50%);
-        /* Precise vertical centering */
-        right: 22px;
-        /* Position *inside* container padding */
-        bottom: auto;
-        /* Remove default bottom positioning */
+        top: 43px; /* Vertically center with toggle button (approx) */
+        transform: translateY(-50%); /* Precise vertical centering */
+        right: 22px; /* Position *inside* container padding */
+        bottom: auto; /* Remove default bottom positioning */
         /* z-index, padding, color etc inherit */
     }
 
 
     /* 6. Adjust overall input area height */
     .input-container {
-        height: auto;
-        /* Allow height to grow based on textarea content */
+        height: auto; /* Allow height to grow based on textarea content */
         /* min-height might not be needed if textarea has min-height */
-        padding-bottom: 10px;
-        /* Reduce bottom padding slightly */
+        padding-bottom: 10px; /* Reduce bottom padding slightly */
     }
 
     /* 7. Chat container height - Remove mobile override (use desktop calc) */
@@ -834,8 +818,7 @@
         padding: 8px;
         min-width: 40px;
         width: 40px;
-        height: 40px;
-        /* Correct height */
+        height: 40px; /* Correct height */
         border-radius: 50%;
         justify-content: center;
     }
