@@ -10,9 +10,17 @@
     color: var(--text-primary);
 }
 
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+}
+
 .header-title {
     font-size: 18px;
     font-weight: 600;
+    text-align: center;
 }
 
 .header-title .model {
@@ -626,6 +634,9 @@
 .header-model-selector {
     display: flex;
     align-items: center;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .header-model-select {
@@ -644,6 +655,7 @@
     outline: none;
     position: relative;
     padding-right: 15px;
+    text-align: center;
 }
 
 .header-model-select::after {
