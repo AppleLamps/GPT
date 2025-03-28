@@ -759,3 +759,60 @@
 #imageGenButton.active svg {
     stroke: #0056b3; /* Match text color */
 }
+
+/* Example (Add to your components.css or layout.css) */
+
+/* Adjust breakpoint as needed (e.g., 768px, 600px) */
+@media (max-width: 600px) {
+
+    /* 1. Hide specific buttons on mobile */
+    #researchButton,
+    /* Deep Research */
+    #voiceButton,
+    /* Voice Input */
+    #modelButton {
+        /* Settings (in toolbar) */
+        display: none;
+    }
+
+    /* 2. Style remaining tool buttons as icons */
+    .bottom-toolbar .tool-button {
+        padding: 8px;
+        /* Reduce padding for icon-only */
+        min-width: 40px;
+        /* Ensure minimum size */
+        width: 40px;
+        /* Fixed width */
+        height: 40px;
+        /* Fixed height */
+        border-radius: 50%;
+        /* Make them circular like image/add buttons */
+        justify-content: center;
+        /* Center the icon */
+    }
+
+    /* Hide the text node within tool-buttons */
+    /* This assumes the text is directly inside the button, adjust if it's wrapped */
+    .bottom-toolbar .tool-button {
+        /* Set font-size to 0 to hide text, might need !important */
+        font-size: 0;
+        line-height: 0;
+        /* Help hide text */
+    }
+
+    /* Ensure SVG icon is still visible and centered */
+    .bottom-toolbar .tool-button svg {
+        margin: 0;
+        /* Remove any margin */
+        /* Adjust size if needed */
+    }
+
+    /* Keep circle buttons as they are (already icons) */
+    /* .bottom-toolbar .circle-button { ... } */
+
+    /* Optional: Adjust gap in the toolbar */
+    .bottom-toolbar {
+        gap: 8px;
+        /* Slightly reduce gap */
+    }
+}
