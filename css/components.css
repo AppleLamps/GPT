@@ -559,7 +559,6 @@
 
 #imagePreview {
     /* Container for preview(s) */
-    /* REMOVED padding: 10px 0 0 16px; */
     padding: 0;
     /* Explicitly set padding to 0 */
     margin-bottom: 10px;
@@ -617,13 +616,6 @@
     /* You can adjust the value '1em' (roughly one line height) */
 }
 
-/* Optional: Prevent extra margin on the very first paragraph if needed */
-/*
-.ai-message-content p:first-child {
-   margin-top: 0;
-}
-*/
-
 /* Typing Indicator Specific Style (Optional) */
 .typing-indicator .ai-message-content {
     color: var(--text-muted);
@@ -659,12 +651,6 @@
     cursor: pointer;
     outline: none;
     /* Remove focus outline */
-
-    /* Optional: Add custom dropdown arrow using background image */
-    /* background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27292.4%27%20height%3D%27292.4%27%3E%3Cpath%20fill%3D%27%23{COLOR}%27%20d%3D%27M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%27%2F%3E%3C%2Fsvg%3E".replace('{COLOR}', '343541')); */
-    /* background-repeat: no-repeat; */
-    /* background-position: right 0.2em top 50%; */
-    /* background-size: 0.65em auto; */
 
     /* Simple text-based arrow */
     position: relative;
@@ -751,127 +737,20 @@
 
 /* Style for when the image gen button is toggled ON */
 #imageGenButton.active {
-    background-color: #d0e6ff; /* Or another distinct color */
+    background-color: #d0e6ff;
+    /* Or another distinct color */
     border-color: #a0c8f0;
     color: #0056b3;
 }
 
 #imageGenButton.active svg {
-    stroke: #0056b3; /* Match text color */
+    stroke: #0056b3;
+    /* Match text color */
 }
 
-/* Example (Add to your components.css or layout.css) */
 
-/* Adjust breakpoint as needed (e.g., 768px, 600px) */
-@media (max-width: 600px) {
-    /* Show the mobile options toggle button */
-    .mobile-options-toggle {
-        display: flex;
-    }
+/* ===== CORRECTED MOBILE STYLES ARE BELOW ===== */
 
-    /* Hide the bottom toolbar on mobile by default */
-    .bottom-toolbar {
-        display: none;
-    }
-    
-    /* When made visible through JS */
-    .bottom-toolbar.mobile-visible {
-        display: flex;
-        position: absolute;
-        bottom: 100%;
-        left: 0;
-        right: 0;
-        background-color: var(--background-primary);
-        border: 1px solid var(--border-primary);
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        padding: 8px;
-        margin-bottom: 8px;
-        z-index: 10;
-        flex-wrap: wrap;
-        justify-content: space-around;
-    }
-
-    /* 1. Hide specific buttons on mobile */
-    #researchButton,
-    /* Deep Research */
-    #voiceButton,
-    /* Voice Input */
-    #modelButton {
-        /* Settings (in toolbar) */
-        display: none;
-    }
-
-    /* 2. Style remaining tool buttons as icons */
-    .bottom-toolbar .tool-button {
-        padding: 8px;
-        /* Reduce padding for icon-only */
-        min-width: 40px;
-        /* Ensure minimum size */
-        width: 40px;
-        /* Fixed width */
-        height: 40px;
-        /* Fixed height */
-        border-radius: 50%;
-        /* Make them circular like image/add buttons */
-        justify-content: center;
-        /* Center the icon */
-    }
-
-    /* Hide the text node within tool-buttons */
-    /* This assumes the text is directly inside the button, adjust if it's wrapped */
-    .bottom-toolbar .tool-button {
-        /* Set font-size to 0 to hide text, might need !important */
-        font-size: 0;
-        line-height: 0;
-        /* Help hide text */
-    }
-
-    /* Ensure SVG icon is still visible and centered */
-    .bottom-toolbar .tool-button svg {
-        margin: 0;
-        /* Remove any margin */
-        /* Adjust size if needed */
-    }
-
-    /* Keep circle buttons as they are (already icons) */
-    /* .bottom-toolbar .circle-button { ... } */
-
-    /* Optional: Adjust gap in the toolbar */
-    .bottom-toolbar {
-        gap: 8px;
-        /* Slightly reduce gap */
-    }
-}
-
-.mobile-options-toggle {
-    display: none; /* Hidden by default, shown only on mobile */
-}
-
-/* Mobile-specific styling for the popup overlay */
-.mobile-options-overlay {
-    display: none; /* Hidden by default */
-    position: absolute;
-    bottom: 100%; /* Position above the input area */
-    left: 0;
-    right: 0;
-    background-color: var(--background-primary);
-    border: 1px solid var(--border-primary);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    padding: 8px;
-    margin-bottom: 8px;
-    z-index: 10;
-}
-
-.mobile-options-overlay.visible {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-around;
-    gap: 8px;
-}
-
-/* ===== Add this entire block to the END of css/components.css ===== */
 
 /* --- Mobile Input Toolbar Adjustments --- */
 
