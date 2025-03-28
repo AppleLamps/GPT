@@ -794,7 +794,7 @@
 
     /* 6. Adjust overall input area height and chat container height */
     :root {
-        --input-area-height-mobile: 75px;
+        --input-area-height-mobile: 60px;
         /* Approximate initial height */
     }
 
