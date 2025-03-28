@@ -112,7 +112,7 @@
     border: 1px solid var(--border-primary);
     border-radius: 24px;
     padding: 14px 50px 14px 16px;
-    /* Space for send button */
+    /* Default padding: space for send button right */
     font-size: 16px;
     background-color: var(--background-primary);
     resize: none;
@@ -132,17 +132,21 @@
     border-color: var(--border-focus);
 }
 
+/* Default Send Button Position (Desktop) */
 .send-button {
     position: absolute;
-    right: 28px;
-    bottom: 28px;
-    /* Adjust based on input container padding */
+    right: 16px;
+    /* Align with container padding */
+    top: 42px;
+    /* Approx vertical center of initial input box */
+    transform: translateY(-50%);
     background: none;
     border: none;
     cursor: pointer;
     color: var(--text-muted);
     padding: 5px;
     /* Clickable area */
+    z-index: 6;
 }
 
 .send-button:hover {
@@ -161,6 +165,7 @@
     align-items: center;
     gap: 10px;
     margin-top: 12px;
+    /* Space above toolbar */
 }
 
 .tool-button {
@@ -609,14 +614,12 @@
     color: #333;
 }
 
-/* Add this to css/components.css */
+/* Paragraph spacing in AI messages */
 .ai-message-content p {
     margin-bottom: 1em;
-    /* Adds space after each paragraph */
-    /* You can adjust the value '1em' (roughly one line height) */
 }
 
-/* Typing Indicator Specific Style (Optional) */
+/* Typing Indicator Specific Style */
 .typing-indicator .ai-message-content {
     color: var(--text-muted);
     font-style: italic;
@@ -624,137 +627,98 @@
 
 /* Header Model Selector Dropdown */
 .header-model-selector {
-    /* Adjust flex properties if needed based on your header layout */
     display: flex;
     align-items: center;
 }
 
 .header-model-select {
-    /* Reset default appearance */
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
     background-color: transparent;
-    /* Match header background */
     border: none;
     padding: 4px 20px 4px 0;
-    /* Add space for a potential custom arrow */
     margin: 0;
     font-family: inherit;
-    /* Use the body font */
     font-size: 18px;
-    /* Match original header-title size */
     font-weight: 600;
-    /* Match original header-title weight */
     color: var(--text-primary);
-    /* Match original header-title color */
     cursor: pointer;
     outline: none;
-    /* Remove focus outline */
-
-    /* Simple text-based arrow */
     position: relative;
     padding-right: 15px;
-    /* Make space for text arrow */
 }
 
-/* Simple text-based arrow */
 .header-model-select::after {
     content: '>';
-    /* Use '>' like the original text */
     position: absolute;
     right: 0;
     top: 50%;
     transform: translateY(-50%);
     pointer-events: none;
-    /* Allow clicks to pass through to select */
     color: var(--text-muted);
-    /* Match original muted color */
     font-size: 16px;
-    /* Slightly smaller */
     margin-left: 5px;
 }
 
-
 .header-model-select:hover {
     color: #000;
-    /* Slightly darken on hover */
 }
 
 .header-model-select option {
-    /* Style options (limited browser support) */
     background-color: var(--background-primary);
     color: var(--text-primary);
 }
 
-/* Optional: Styling for when audio is loading or playing */
+/* TTS Listen Button States */
 .listen-button.loading svg,
 .listen-button.playing svg {
     opacity: 0.5;
-    /* Example: Dim the icon */
 }
 
 .listen-button.loading {
     cursor: wait;
 }
 
-/* Inside css/components.css */
-
-/* Optional styling for the new textarea */
+/* TTS Instructions Textarea */
 #ttsInstructionsInput {
     min-height: 60px;
-    /* Adjust as needed */
     resize: vertical;
-    /* Allow vertical resizing */
 }
 
-/* Added to css/layout.css (or components.css) */
+/* Header Right Actions Group */
 .header-right-actions {
     display: flex;
     align-items: center;
     gap: 8px;
-    /* Adjust gap between settings and new chat icons as needed */
 }
 
-
-/* Style for images within user message history */
+/* User History Image */
 .user-bubble .history-image {
     display: block;
-    /* Make image a block element */
     max-width: 100%;
-    /* Prevent image from exceeding bubble width */
     max-height: 250px;
-    /* Limit image height */
     height: auto;
-    /* Maintain aspect ratio */
     border-radius: 15px;
-    /* Match bubble corners slightly */
     margin-bottom: 8px;
-    /* Add space between image and text */
     border: 1px solid var(--border-primary);
-    /* Optional subtle border */
 }
 
-/* Style for when the image gen button is toggled ON */
+/* Image Gen Button Active State */
 #imageGenButton.active {
     background-color: #d0e6ff;
-    /* Or another distinct color */
     border-color: #a0c8f0;
     color: #0056b3;
 }
 
 #imageGenButton.active svg {
     stroke: #0056b3;
-    /* Match text color */
 }
-
-
-/* ===== CORRECTED MOBILE STYLES ARE BELOW ===== */
 
 
 /* --- Mobile Input Toolbar Adjustments --- */
 
-/* Default state (Desktop): Hide the mobile toggle if it exists */
+/* Default state (Desktop): Hide the mobile toggle */
 #mobileOptionsToggleBtn {
     display: none;
 }
@@ -765,31 +729,23 @@
 
     /* 1. Hide the standard toolbar by default on mobile */
     .input-container .bottom-toolbar {
-        /* Make selector more specific */
         display: none;
         /* Hide it initially */
         /* Styles for when it becomes visible (as a popup) */
         position: absolute;
-        /* Position it relative to input-container */
-        bottom: 60px;
-        /* Adjust distance from the bottom edge of input-container */
+        bottom: 70px;
+        /* Raise popup slightly higher */
         left: 16px;
-        /* Align with left padding */
         right: 16px;
-        /* Stretch or set max-width */
         background-color: var(--background-primary);
         border: 1px solid var(--border-primary);
         border-radius: 8px;
         padding: 10px;
         box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
         z-index: 10;
-        /* Ensure it's above the input box */
         flex-wrap: wrap;
-        /* Allow buttons to wrap */
         gap: 8px;
-        /* Space between buttons */
         justify-content: flex-start;
-        /* Align buttons */
     }
 
     /* 2. Style for when the toolbar IS shown via JS */
@@ -803,84 +759,60 @@
         display: flex;
         /* Show the button */
         position: absolute;
-        bottom: 25px;
-        /* Adjust vertical position */
+        top: 42px;
+        /* Approx vertical center of initial input box */
+        transform: translateY(-50%);
+        /* Center vertically */
         left: 16px;
-        /* Adjust horizontal position */
+        /* Align with container padding */
         z-index: 6;
-        /* Above input, below popup */
-        /* Ensure it looks like other circle buttons */
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background-color: var(--background-tertiary);
-        border: 1px solid var(--border-primary);
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        color: var(--text-primary);
+        /* --- Inherit styles from .circle-button --- */
+        /* width, height, border-radius, background, border, align-items, justify-content, cursor, color */
     }
 
-    #mobileOptionsToggleBtn:hover {
-        background-color: #e0e0e0;
-    }
-
-    #mobileOptionsToggleBtn svg {
-        stroke: currentColor;
-    }
-
-    /* 4. Adjust input padding to make space for the '+' button */
+    /* 4. Adjust input padding to make space for the buttons */
     .input-container .input-box {
         padding-left: 60px;
-        /* Add space on the left for the '+' button */
-        padding-right: 50px;
-        /* Keep space for send button */
+        /* Space for '+' button */
+        padding-right: 60px;
+        /* Space for Send button */
     }
 
     /* 5. Adjust Send Button position specifically for mobile */
     .input-container .send-button {
-        /* Keep right positioning, adjust bottom */
-        bottom: 25px;
-        /* Align vertically with the mobile toggle button (adjust as needed) */
-        /* right: 28px; */
-        /* Inherits from default styles */
+        /* Position from top, center vertically like the toggle button */
+        top: 42px;
+        /* Approx vertical center of initial input box */
+        transform: translateY(-50%);
+        /* Center vertically */
+        right: 16px;
+        /* Align with container padding on the right */
+        /* Remove default bottom positioning */
+        bottom: auto;
     }
 
 
     /* 6. Adjust overall input area height and chat container height */
-    /* Define a smaller variable for mobile input height */
     :root {
         --input-area-height-mobile: 85px;
-        /* Base height without toolbar visible */
-        /* Consider removing fixed height and letting content define it */
-        /* height: auto; */
+        /* Approximate initial height */
     }
 
-    /* Make input container slightly shorter or auto */
     .input-container {
-        /* padding-bottom: 10px; */
-        /* Adjust padding if needed */
         min-height: var(--input-area-height-mobile);
-        /* Use min-height instead? */
         height: auto;
-        /* Allow height to adjust based on textarea */
+        /* Allow height to grow with textarea */
     }
 
-    /* Adjust chat container height calculation */
     .chat-container {
-        /* Recalculate height based on mobile input area height */
-        /* This is tricky if input height is auto. May need JS adjustment or different layout approach */
+        /* Adjust height calculation - This might still need fine-tuning depending on dynamic input height */
         height: calc(100vh - var(--header-height) - var(--input-area-height-mobile));
-        /* Approximate */
-        /* padding-bottom: 10px; */
     }
 
     /* Hide text on tool-buttons within the popup */
     .input-container .bottom-toolbar.mobile-visible .tool-button {
         font-size: 0;
-        /* Hide text node */
         padding: 8px;
-        /* Adjust padding */
         min-width: 40px;
         width: 40px;
         height: 40px;
@@ -892,7 +824,7 @@
         margin: 0;
     }
 
-    /* Hide specific less-used buttons even in popup? Optional */
+    /* Hide specific less-used buttons even in popup */
     .input-container .bottom-toolbar.mobile-visible #researchButton,
     .input-container .bottom-toolbar.mobile-visible #voiceButton,
     .input-container .bottom-toolbar.mobile-visible #modelButton {
