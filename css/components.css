@@ -870,3 +870,155 @@
     justify-content: space-around;
     gap: 8px;
 }
+
+/* ===== Add this entire block to the END of css/components.css ===== */
+
+/* --- Mobile Input Toolbar Adjustments --- */
+
+/* Default state (Desktop): Hide the mobile toggle if it exists */
+#mobileOptionsToggleBtn {
+    display: none;
+}
+
+/* Mobile Styles */
+@media (max-width: 600px) {
+    /* Adjust breakpoint if needed */
+
+    /* 1. Hide the standard toolbar by default on mobile */
+    .input-container .bottom-toolbar {
+        /* Make selector more specific */
+        display: none;
+        /* Hide it initially */
+        /* Styles for when it becomes visible (as a popup) */
+        position: absolute;
+        /* Position it relative to input-container */
+        bottom: 60px;
+        /* Adjust distance from the bottom edge of input-container */
+        left: 16px;
+        /* Align with left padding */
+        right: 16px;
+        /* Stretch or set max-width */
+        background-color: var(--background-primary);
+        border: 1px solid var(--border-primary);
+        border-radius: 8px;
+        padding: 10px;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+        /* Ensure it's above the input box */
+        flex-wrap: wrap;
+        /* Allow buttons to wrap */
+        gap: 8px;
+        /* Space between buttons */
+        justify-content: flex-start;
+        /* Align buttons */
+    }
+
+    /* 2. Style for when the toolbar IS shown via JS */
+    .input-container .bottom-toolbar.mobile-visible {
+        display: flex;
+        /* Show the toolbar as a flex container */
+    }
+
+    /* 3. Show and Position the '+' button on mobile */
+    #mobileOptionsToggleBtn {
+        display: flex;
+        /* Show the button */
+        position: absolute;
+        bottom: 25px;
+        /* Adjust vertical position */
+        left: 16px;
+        /* Adjust horizontal position */
+        z-index: 6;
+        /* Above input, below popup */
+        /* Ensure it looks like other circle buttons */
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: var(--background-tertiary);
+        border: 1px solid var(--border-primary);
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: var(--text-primary);
+    }
+
+    #mobileOptionsToggleBtn:hover {
+        background-color: #e0e0e0;
+    }
+
+    #mobileOptionsToggleBtn svg {
+        stroke: currentColor;
+    }
+
+    /* 4. Adjust input padding to make space for the '+' button */
+    .input-container .input-box {
+        padding-left: 60px;
+        /* Add space on the left for the '+' button */
+        padding-right: 50px;
+        /* Keep space for send button */
+    }
+
+    /* 5. Adjust Send Button position specifically for mobile */
+    .input-container .send-button {
+        /* Keep right positioning, adjust bottom */
+        bottom: 25px;
+        /* Align vertically with the mobile toggle button (adjust as needed) */
+        /* right: 28px; */
+        /* Inherits from default styles */
+    }
+
+
+    /* 6. Adjust overall input area height and chat container height */
+    /* Define a smaller variable for mobile input height */
+    :root {
+        --input-area-height-mobile: 85px;
+        /* Base height without toolbar visible */
+        /* Consider removing fixed height and letting content define it */
+        /* height: auto; */
+    }
+
+    /* Make input container slightly shorter or auto */
+    .input-container {
+        /* padding-bottom: 10px; */
+        /* Adjust padding if needed */
+        min-height: var(--input-area-height-mobile);
+        /* Use min-height instead? */
+        height: auto;
+        /* Allow height to adjust based on textarea */
+    }
+
+    /* Adjust chat container height calculation */
+    .chat-container {
+        /* Recalculate height based on mobile input area height */
+        /* This is tricky if input height is auto. May need JS adjustment or different layout approach */
+        height: calc(100vh - var(--header-height) - var(--input-area-height-mobile));
+        /* Approximate */
+        /* padding-bottom: 10px; */
+    }
+
+    /* Hide text on tool-buttons within the popup */
+    .input-container .bottom-toolbar.mobile-visible .tool-button {
+        font-size: 0;
+        /* Hide text node */
+        padding: 8px;
+        /* Adjust padding */
+        min-width: 40px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        justify-content: center;
+    }
+
+    .input-container .bottom-toolbar.mobile-visible .tool-button svg {
+        margin: 0;
+    }
+
+    /* Hide specific less-used buttons even in popup? Optional */
+    .input-container .bottom-toolbar.mobile-visible #researchButton,
+    .input-container .bottom-toolbar.mobile-visible #voiceButton,
+    .input-container .bottom-toolbar.mobile-visible #modelButton {
+        display: none;
+    }
+}
+
+/* --- End Mobile Input Toolbar Adjustments --- */
