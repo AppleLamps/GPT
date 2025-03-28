@@ -107,27 +107,24 @@
 }
 
 /* Input Area Components */
-.input-container {
-    position: relative;
-    padding: 16px;
-    display: flex;
-    align-items: center;
-}
-
 .input-box {
     width: 100%;
     border: 1px solid var(--border-primary);
     border-radius: 24px;
     padding: 14px 50px 14px 16px;
+    /* Default padding: space for send button right */
     font-size: 16px;
     background-color: var(--background-primary);
     resize: none;
+    /* Disable manual resizing */
     min-height: 53px;
+    /* Initial height */
     max-height: 200px;
+    /* Limit expansion */
     overflow-y: auto;
-    display: flex;
-    align-items: center;
-    line-height: normal;
+    /* Scroll if content exceeds max-height */
+    line-height: 1.4;
+    /* Adjust line height for better readability */
 }
 
 .input-box:focus {
@@ -139,7 +136,7 @@
 .send-button {
     position: absolute;
     right: 16px;
-    top: 50%;
+    top: 50%;  /* Change from 42px to 50% */
     transform: translateY(-50%);
     background: none;
     border: none;
@@ -874,73 +871,6 @@
         top: calc(50% + 10px); /* Adjust this value as needed */
         position: absolute;
         z-index: 10; /* Ensure buttons are above other elements */
-    }
-
-    /* Make the input container use flexbox for better arrangement */
-    .input-container {
-        display: flex;
-        flex-direction: column;
-        position: relative;
-    }
-    
-    /* Keep image preview above but don't let it affect button positioning */
-    #imagePreview {
-        order: -1; /* Show at top */
-        margin-bottom: 5px;
-    }
-    
-    /* Create a container for the input and buttons */
-    .input-container .input-row {
-        display: flex;
-        position: relative;
-        align-items: center;
-    }
-    
-    /* Adjust input box to work with flexbox */
-    .input-container .input-box {
-        flex: 1;
-        margin: 0 50px; /* Make space for buttons */
-    }
-    
-    /* Position buttons within the input row */
-    #mobileOptionsToggleBtn,
-    .send-button {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-    }
-    
-    #mobileOptionsToggleBtn {
-        left: 5px;
-    }
-    
-    .send-button {
-        right: 5px;
-    }
-
-    /* Maintain bottom spacing regardless of content */
-    .input-container {
-        padding-bottom: 20px; /* Increase padding at bottom */
-        margin-bottom: 10px; /* Add margin for extra space */
-    }
-    
-    /* Ensure image preview doesn't compress input area */
-    #imagePreview {
-        margin-bottom: 10px;
-        min-height: 0; /* Allow collapse when empty */
-    }
-    
-    /* Make sure the AI voices note is always visible */
-    .input-footer-note {
-        position: relative;
-        margin-top: 15px;
-        padding-bottom: 5px;
-        z-index: 1;
-    }
-    
-    /* Prevent the window from cutting off content */
-    body {
-        padding-bottom: env(safe-area-inset-bottom, 15px);
     }
 }
 
