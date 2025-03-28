@@ -38,14 +38,20 @@
      position: fixed;
      bottom: 0;
      left: 0;
-     /* Adjust left based on sidebar visibility if needed */
      right: 0;
      padding: 16px;
      background-color: var(--background-primary);
      border-top: 1px solid var(--border-secondary);
      z-index: 5;
-     /* Ensure it's above chat content but below sidebar/modals */
-     /* transition: left 0.3s ease; /* Smooth transition with sidebar */
+     /* Ensure it stays within the viewport width */
+     max-width: 100%;
+     box-sizing: border-box;
+ }
+
+ .input-row {
+     display: flex;
+     align-items: center;
+     max-width: 100%;
  }
 
  /* .input-container.sidebar-visible {
