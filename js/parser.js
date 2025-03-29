@@ -50,6 +50,31 @@ export function parseFinalHtml() {
     });
 }
 
+/**
+ * Parses a markdown string into HTML.
+ * @param {string} markdownText - The markdown text to parse.
+ * @returns {string} The parsed HTML.
+ */
+export function parseMarkdownString(markdownText) {
+  if (typeof marked === 'undefined') {
+    console.error("Marked library not available for parsing.");
+    return escapeHTML(markdownText || ""); // Fallback
+  }
+  if (typeof markdownText !== 'string') {
+    return ""; // Return empty for non-string input
+  }
+  try {
+    // Use marked to parse the provided text.
+    return marked.parse(markdownText, {
+      breaks: true, // Convert GFM line breaks to <br>
+      gfm: true,    // Enable GitHub Flavored Markdown
+      async: false  // Use synchronous parsing
+    });
+  } catch (e) {
+    console.error("Error parsing markdown string:", e);
+    return escapeHTML(markdownText); // Fallback to escaped text on error
+  }
+}
 
 /**
  * Returns the total accumulated raw text.

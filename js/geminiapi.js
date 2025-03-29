@@ -389,4 +389,125 @@ export async function fetchGeminiStream(apiKey, modelName, contents, systemInstr
          }
          removeTypingIndicator(); // Ensure indicator is always removed
     }
+}
+
+/**
+ * Fetches a deep research report from the Gemini API.
+ * @param {string} apiKey - The Gemini API key.
+ * @param {string} modelName - The specific Gemini model ID (e.g., 'gemini-2.5-pro-exp-03-25').
+ * @param {string} reportPrompt - The detailed prompt for generating the research report.
+ * @returns {Promise<string|null>} - The combined report text or null if there was an error.
+ */
+export async function fetchDeepResearch(apiKey, modelName, reportPrompt) {
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+  const reportSchema = {
+    type: 'OBJECT',
+    properties: {
+      'Report_Title': { type: 'STRING', description: 'Fitting and descriptive title for the report.' },
+      'Introduction_Scope': { type: 'STRING', description: 'Comprehensive introduction, scope, objectives, and significance.' },
+      'Historical_Context_Background': { type: 'STRING', description: 'Relevant historical context, background, key developments, or foundational principles.' },
+      'Key_Concepts_Definitions': { type: 'STRING', description: 'Detailed explanation of core concepts, terminology, and principles with examples.' },
+      'Main_Analysis_Exploration': { type: 'STRING', description: 'Central section exploring 3-6 significant sub-themes in depth, including analysis, evidence, perspectives.' },
+      'Current_State_Applications': { type: 'STRING', description: 'Current status, relevance, real-world applications, or manifestations.' },
+      'Challenges_Perspectives_Criticisms': { type: 'STRING', description: 'Challenges, limitations, criticisms, controversies, or differing perspectives.' },
+      'Future_Outlook_Trends': { type: 'STRING', description: 'Potential future developments, emerging trends, research directions, or long-term outlook.' },
+      'Conclusion': { type: 'STRING', description: 'Synthesized key points, reiteration of significance, and final thoughts.' }
+    },
+    required: [
+      'Report_Title',
+      'Introduction_Scope',
+      'Historical_Context_Background',
+      'Key_Concepts_Definitions',
+      'Main_Analysis_Exploration',
+      'Current_State_Applications',
+      'Challenges_Perspectives_Criticisms',
+      'Future_Outlook_Trends',
+      'Conclusion'
+    ]
+  };
+
+  const requestBody = {
+    contents: [{ parts: [{ text: reportPrompt }] }],
+    generationConfig: {
+      response_mime_type: "application/json",
+      response_schema: reportSchema,
+      // Adjust temperature if needed, e.g., temperature: 0.7
+    }
+  };
+
+  let controller;
+  let timeoutId;
+  try {
+    controller = new AbortController();
+    // Set timeout (e.g., 30 minutes = 1,800,000 ms)
+    timeoutId = setTimeout(() => {
+        console.warn('Deep research request timed out.');
+        controller.abort('Request timed out');
+    }, 1800000); // 30 minutes
+
+    console.log("Sending deep research request to Gemini...");
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId); // Clear timeout if response received
+
+    if (!response.ok) {
+      let errorMsg = `API Error (${response.status})`;
+      try {
+        const errorData = await response.json();
+        console.error('Gemini API Error Response:', errorData);
+        errorMsg = errorData?.error?.message || errorMsg;
+      } catch (e) {
+        console.error('Failed to parse API error response.');
+        errorMsg = `API Error (${response.status}): ${response.statusText || 'Unknown error'}`;
+      }
+      showNotification(`Deep Research failed: ${errorMsg}`, 'error', 7000);
+      return null;
+    }
+
+    // Process successful response
+    const responseData = await response.json();
+    console.log("Deep research response received.");
+
+    // Extract the nested JSON string (adjust path if needed based on actual API response structure)
+    const nestedJsonString = responseData?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!nestedJsonString) {
+      console.error('Could not find nested JSON text in Gemini response:', responseData);
+      // Check for block reasons
+      const blockReason = responseData?.promptFeedback?.blockReason;
+      const finishReason = responseData?.candidates?.[0]?.finishReason;
+      let reason = blockReason ? `Blocked: ${blockReason}` : (finishReason ? `Finished with reason: ${finishReason}` : 'Unexpected response structure');
+      showNotification(`Deep research failed: ${reason}.`, 'error', 7000);
+      return null;
+    }
+
+    // Parse the nested JSON string
+    let reportJson;
+    try {
+      reportJson = JSON.parse(nestedJsonString);
+    } catch (jsonError) {
+      console.error('Failed to parse nested JSON from Gemini response:', jsonError, nestedJsonString);
+      showNotification('Deep research failed: Invalid JSON format received from model.', 'error', 7000);
+      return null;
+    }
+
+    console.log("Successfully parsed deep research JSON.");
+    return reportJson; // Return the entire parsed JSON object
+
+  } catch (error) {
+    clearTimeout(timeoutId); // Ensure timeout is cleared on error too
+    if (error.name === 'AbortError') {
+        showNotification('Deep research request timed out after 30 minutes.', 'error', 7000);
+    } else {
+        console.error('Error during fetchDeepResearch:', error);
+        showNotification(`Deep research request failed: ${error.message}`, 'error', 7000);
+    }
+    return null;
+  }
 } 

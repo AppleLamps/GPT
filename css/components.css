@@ -1333,3 +1333,15 @@ body.dark-mode .cancel-button {
 body.dark-mode .cancel-button:hover {
     background-color: var(--dark-background-tertiary);
 }
+
+/* Add to css/components.css, near other .active button styles */
+
+#researchButton.active {
+    background-color: #d0e6ff; /* Light blue background */
+    border-color: #a0c8f0;    /* Slightly darker blue border */
+    color: #0056b3;           /* Darker text color */
+}
+
+#researchButton.active svg {
+    stroke: #0056b3;          /* Match text color */
+}

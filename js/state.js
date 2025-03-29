@@ -12,6 +12,7 @@ let settings = {
 let attachedFiles = []; // For per-message file uploads
 let isImageGenerationMode = false; // Track if image generation mode is active
 let lastGeneratedImageUrl = null; // <<< ADD THIS LINE: Track the last generated image URL
+let isDeepResearchMode = false; // Track if deep research mode is active
 
 let isWebSearchEnabled = false; // Track if search is active for the next send
 let previousResponseId = null; // Track the ID of the last successful response (for Responses API)
@@ -244,3 +245,19 @@ export function clearLastGeneratedImageUrl() {
     }
 }
 // --- End Last Generated Image URL State ---
+
+// --- Deep Research Mode State ---
+export function getIsDeepResearchMode() {
+    return isDeepResearchMode;
+}
+
+export function setIsDeepResearchMode(isActive) {
+    isDeepResearchMode = !!isActive; // Ensure boolean
+    console.log("Deep Research Mode set to:", isDeepResearchMode);
+    // If turning ON deep research, turn OFF other modes
+    if (isDeepResearchMode) {
+        setIsWebSearchEnabled(false);
+        setImageGenerationMode(false);
+        // Add any other conflicting modes here
+    }
+}
