@@ -1,0 +1,252 @@
+/* Styles defining the main page structure and layout */
+
+/* Main content area adjustments if sidebar is considered */
+/* .main-content {
+    transition: margin-left 0.3s ease; /* Smooth transition when sidebar opens/closes */
+/* } */
+
+/* .main-content.sidebar-visible {
+    margin-left: var(--sidebar-width); /* Push content over when sidebar is open */
+/* } */
+
+/* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.875rem 1rem;
+    /* Convert 14px 16px to rem */
+    border-bottom: 1px solid var(--border-secondary);
+    background-color: var(--background-primary);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    height: var(--header-height);
+    box-sizing: border-box;
+    /* Ensure padding doesn't add height */
+}
+
+/* Chat container */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    /* Use dvh for dynamic viewport height, better for mobile */
+    height: calc(100dvh - var(--header-height) - var(--input-area-height));
+    /* Fallback for older browsers */
+    height: calc(100vh - var(--header-height) - var(--input-area-height));
+    overflow-y: auto;
+    /* Add scroll-padding-bottom to prevent content hiding behind input */
+    scroll-padding-bottom: 1rem;
+    padding: 0 2rem 1rem 2rem;
+    /* Desktop padding */
+    box-sizing: border-box;
+}
+
+/* Input area */
+.input-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1rem;
+    /* Desktop padding */
+    /* Add safe area padding for iOS home bar etc. */
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    background-color: var(--background-primary);
+    border-top: 1px solid var(--border-secondary);
+    z-index: 5;
+    max-width: 100%;
+    box-sizing: border-box;
+    /* Let height be determined by content, use min-height if needed */
+    height: auto;
+    min-height: var(--input-area-height);
+    /* Ensure it has a minimum size */
+}
+
+.input-row {
+    display: flex;
+    /* Align items to the bottom, especially useful when textarea grows */
+    align-items: flex-end;
+    max-width: 100%;
+    gap: 0.5rem;
+    /* Desktop gap */
+}
+
+/* .input-container.sidebar-visible {
+    left: var(--sidebar-width);
+} */
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    background-color: var(--background-secondary);
+    border-right: 1px solid var(--border-primary);
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar.visible {
+    transform: translateX(0);
+}
+
+.sidebar-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.sidebar-section {
+    padding: 1rem;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding: 1rem;
+    border-top: 1px solid var(--border-primary);
+}
+
+/* Overlay for sidebar */
+.overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+    /* Below sidebar, above content */
+}
+
+.overlay.visible {
+    display: block;
+}
+
+/* Welcome screen layout */
+.welcome-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 0 1.25rem;
+}
+
+/* Modal layout */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.visible {
+    display: flex;
+}
+
+.modal-content {
+    background-color: var(--background-primary);
+    border-radius: 0.5rem;
+    width: 100%;
+    max-width: 31.25rem;
+    padding: 1.5rem;
+    margin: 1rem;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+
+/* Notification container layout */
+.notification-container {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    max-width: 18.75rem;
+    pointer-events: none;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    .chat-container {
+        padding: 0 1rem 0.5rem 1rem;
+        /* Reduce padding on mobile, esp bottom */
+        /* Ensure height calculation uses dvh */
+        height: calc(100dvh - var(--header-height) - var(--input-area-height));
+        /* Fallback */
+        height: calc(100vh - var(--header-height) - var(--input-area-height));
+        scroll-padding-bottom: 0.5rem;
+        /* Adjust scroll padding */
+    }
+
+    .modal-content {
+        max-width: calc(100vw - 2rem);
+        margin: 1rem;
+    }
+
+    .notification-container {
+        max-width: calc(100vw - 2.5rem);
+        top: 1rem;
+        right: 1rem;
+    }
+
+    /* Adjust input container for mobile */
+    .input-container {
+        padding: 0.5rem;
+        /* Reduce overall padding */
+        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+        /* Keep safe area */
+        min-height: auto;
+        /* Allow height to shrink/grow more freely */
+        /* Re-evaluate if --input-area-height needs to be dynamic */
+        /* min-height: var(--input-area-height); */
+    }
+
+    .input-row {
+        gap: 0.25rem;
+        /* Reduce gap between elements */
+        align-items: flex-end;
+        /* Keep alignment */
+    }
+
+    .sidebar {
+        width: 85vw;
+        max-width: 20rem;
+    }
+}
+
+/* Further adjustments for smaller screens if needed */
+@media (max-width: 600px) {
+    .input-container {
+        padding: 4px 8px;
+        /* Even tighter padding */
+        padding-bottom: calc(4px + env(safe-area-inset-bottom));
+        /* Safe area */
+    }
+
+    .input-row {
+        gap: 4px;
+        /* Tighter gap */
+    }
+}
