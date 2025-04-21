@@ -248,50 +248,76 @@ function stopCurrentAudio() {
  * @param {HTMLElement} buttonElement The specific listen button element that was clicked.
  */
 async function handleListenClick(textToSpeak, buttonElement) {
-    // ... (Check if clicking playing button, stop previous audio logic) ...
-    console.log("Stopping any previously playing audio.");
+    if (!textToSpeak || !textToSpeak.trim()) {
+        console.warn("handleListenClick called with empty text.");
+        return;
+    }
+
+    // Stop any currently playing audio
     stopCurrentAudio();
 
-    // --- Set Loading State ---
-    console.log("Setting loading state on button.");
-    buttonElement.classList.add('loading');
-    currentListenButton = buttonElement;
+    // Show loading state
+    if (buttonElement) {
+        buttonElement.disabled = true;
+        buttonElement.innerHTML = `
+            <svg class="spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="2" x2="12" y2="6"></line>
+                <line x1="12" y1="18" x2="12" y2="22"></line>
+                <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+                <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+                <line x1="2" y1="12" x2="6" y2="12"></line>
+                <line x1="18" y1="12" x2="22" y2="12"></line>
+                <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+                <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
+            </svg>`;
+    }
 
-    // --- Choose Voice & Format ---
-    const voice = 'onyx'; // Or get from settings later?
-    const format = 'mp3';
+    try {
+        const voice = state.getTtsVoice();
+        const instructions = state.getTtsInstructions();
+        const audioBlob = await api.fetchSpeechFromChat(textToSpeak, voice, 'mp3', instructions);
+        
+        if (!audioBlob) {
+            throw new Error("Failed to generate speech audio.");
+        }
 
-    // --- GET SAVED INSTRUCTIONS FROM STATE --- <<< MODIFIED
-    const ttsInstructions = state.getTtsInstructions() || null; // Get saved instructions, use null if empty
+        // Create and play the audio
+        const audioUrl = URL.createObjectURL(audioBlob);
+        currentAudio = new Audio(audioUrl);
+        
+        // Clean up the URL when done
+        currentAudio.addEventListener('ended', () => {
+            URL.revokeObjectURL(audioUrl);
+            if (buttonElement) {
+                buttonElement.disabled = false;
+                buttonElement.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                    </svg>`;
+            }
+        });
 
-    // --- Add AI Disclosure (Important!) ---
-    showNotification("Playing AI-generated voice (OpenAI).", 'info', 4000);
+        currentAudio.play().catch(error => {
+            console.error('Error playing audio:', error);
+            showNotification('Failed to play audio. Please try again.', 'error');
+        });
 
-    // --- Call the API (Pass the retrieved instructions) ---
-    console.log(`Fetching speech. Instructions: ${ttsInstructions ? `"${ttsInstructions}"` : "[None]"}`);
-    const audioBlob = await api.fetchSpeech(textToSpeak, voice, format, ttsInstructions); // <<< PASS instructions
-
-    // --- Handle API Response ---
-    buttonElement.classList.remove('loading');
-
-    if (audioBlob) {
-        // ... (rest of the audio playback logic: createObjectURL, new Audio, event handlers, play()) ...
-        console.log("Audio Blob received, setting up playback.");
-        try {
-            const audioUrl = URL.createObjectURL(audioBlob);
-            console.log("Created Blob URL:", audioUrl);
-            currentAudio = new Audio(audioUrl);
-
-            currentAudio.onplaying = () => { /* ... */ };
-            currentAudio.onended = () => { stopCurrentAudio(); };
-            currentAudio.onerror = (e) => { /* ... */ stopCurrentAudio(); };
-
-            currentAudio.play();
-
-        } catch (playError) { /* ... */ stopCurrentAudio(); }
-    } else {
-        console.log("fetchSpeech returned null, playback aborted.");
-        currentListenButton = null;
+    } catch (error) {
+        console.error('Error in handleListenClick:', error);
+        showNotification('Failed to generate or play speech. Please try again.', 'error');
+    } finally {
+        // Reset button state if there was an error
+        if (buttonElement) {
+            buttonElement.disabled = false;
+            buttonElement.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                </svg>`;
+        }
     }
 }
 

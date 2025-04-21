@@ -6,9 +6,10 @@ let currentImage = null; // { data: base64string, name: filename }
 let settings = {
     apiKey: '',
     model: 'gpt-4o', // Default model setting
-    ttsInstructions: '', // <<< NEW: Add property for TTS instructions
-    geminiApiKey: '', // <<< NEW: Add property for Google Gemini API key
-    xaiApiKey: '' // <<< NEW: Add property for X.AI API key
+    ttsInstructions: '', // TTS instructions
+    ttsVoice: localStorage.getItem('openai_tts_voice') || 'alloy', // Default TTS voice
+    geminiApiKey: '', // Gemini API key
+    xaiApiKey: '' // X.AI API key
 };
 let attachedFiles = []; // For per-message file uploads
 let isImageGenerationMode = false; // Track if image generation mode is active
@@ -109,37 +110,29 @@ export function loadSettings() {
     settings.apiKey = localStorage.getItem('openai_api_key') || '';
     settings.model = localStorage.getItem('openai_model') || 'gpt-4o';
     settings.ttsInstructions = localStorage.getItem('openai_tts_instructions') || '';
+    settings.ttsVoice = localStorage.getItem('openai_tts_voice') || 'alloy';
     settings.geminiApiKey = localStorage.getItem('google_gemini_api_key') || '';
     settings.xaiApiKey = localStorage.getItem('xai_api_key') || '';
     console.log("General Settings Loaded:", settings);
     return { ...settings }; // Return a copy
 }
 
-// <<< MODIFIED: Accept geminiApiKey as a fourth argument >>>
-export function saveSettings(newApiKey, newModel, newTtsInstructions, newGeminiApiKey, newXaiApiKey) { // <<< MODIFIED: Added newXaiApiKey parameter
+export function saveSettings(newApiKey, newModel, newTtsInstructions, newGeminiApiKey, newXaiApiKey, newTtsVoice) {
     settings.apiKey = newApiKey;
     settings.model = newModel;
-    // Handle potential null/undefined, default to empty string
-    settings.ttsInstructions = newTtsInstructions?.trim() ?? ''; // <<< Save instructions
-    settings.geminiApiKey = newGeminiApiKey?.trim() ?? ''; // <<< NEW: Save Gemini API key
-    settings.xaiApiKey = newXaiApiKey?.trim() ?? ''; // <<< NEW: Save X.AI API key
+    settings.ttsInstructions = newTtsInstructions?.trim() ?? '';
+    settings.ttsVoice = newTtsVoice || 'alloy';
+    settings.geminiApiKey = newGeminiApiKey?.trim() ?? '';
+    settings.xaiApiKey = newXaiApiKey?.trim() ?? '';
 
     localStorage.setItem('openai_api_key', newApiKey);
     localStorage.setItem('openai_model', newModel);
-    localStorage.setItem('openai_tts_instructions', settings.ttsInstructions); // <<< Save to localStorage
-    localStorage.setItem('google_gemini_api_key', settings.geminiApiKey); // <<< NEW: Save to localStorage
-    localStorage.setItem('xai_api_key', newXaiApiKey?.trim() ?? ''); // Fixed: Use newXaiApiKey instead of settings.xaiApiKey
+    localStorage.setItem('openai_tts_instructions', settings.ttsInstructions);
+    localStorage.setItem('openai_tts_voice', settings.ttsVoice);
+    localStorage.setItem('google_gemini_api_key', settings.geminiApiKey);
+    localStorage.setItem('xai_api_key', settings.xaiApiKey);
 
     console.log("General Settings Saved:", settings);
-
-    // If switching the *default* model away from gpt-4o, maybe reset context?
-    // This logic might need refinement depending on interaction with Custom GPTs
-    if (newModel !== 'gpt-4o') {
-        // isWebSearchEnabled = false; // Search toggle state is separate
-        // previousResponseId = null; // Conversation state tied to actual API calls, not default setting
-    }
-    // UI update for input buttons depends on the *effective* model (default or custom)
-    // This should be called after saveSettings completes.
 }
 
 export function getApiKey() { return settings.apiKey; }
@@ -147,6 +140,9 @@ export function getSelectedModelSetting() { return settings.model; }
 export function getTtsInstructions() { return settings.ttsInstructions; }
 export function getGeminiApiKey() { return settings.geminiApiKey; }
 export function getXaiApiKey() { return settings.xaiApiKey; } // NEW: Getter function for X.AI API key
+export function getTtsVoice() {
+    return settings.ttsVoice;
+}
 
 // --- Web Search State (Per-message Toggle) ---
 export function toggleWebSearch() {

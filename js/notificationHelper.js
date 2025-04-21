@@ -1,16 +1,21 @@
 // ===== FILE: js/notificationHelper.js =====
 
 // Import the new notification function
-import { showNotification as newShowNotification } from './components/notification.js';
+import { showNotification as baseShowNotification } from './components/notification.js';
 
 /**
- * A compatibility wrapper that redirects all notifications to the new system
- * This allows existing code to continue working without changes
+ * Compatibility wrapper for showing notifications.
+ * @param {string} message - The message content to display.
+ * @param {'info' | 'success' | 'error' | 'warning'} type - The type of notification (controls styling).
+ * @param {number} duration - How long the notification stays visible in milliseconds.
  */
-export function showNotification(message, type = 'info', duration = 3000) {
-    // Simply forward all calls to the new implementation
-    newShowNotification(message, type, duration);
+export function showNotificationCompat(message, type = 'info', duration = 3000) {
+    baseShowNotification(message, type, duration);
 }
+
+// Re-export the modern function both as default and named export
+export { baseShowNotification as showNotification };
+export default baseShowNotification;
 
 /**
  * Initializes notification compatibility by exposing the showNotification
@@ -18,7 +23,7 @@ export function showNotification(message, type = 'info', duration = 3000) {
  */
 export function initializeNotificationSystem() {
     // Add it to the window for any direct browser calls
-    window.showNotification = showNotification;
+    window.showNotification = baseShowNotification;
     
     console.log("Notification system initialized");
 } 

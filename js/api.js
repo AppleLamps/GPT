@@ -13,6 +13,8 @@ import { escapeHTML } from './utils.js';
 import { fetchGeminiStream, buildGeminiPayloadContents, buildGeminiSystemInstruction, buildGeminiGenerationConfig } from './geminiapi.js';
 // Import the new rendering function
 import { renderImprovedWebSearchResults } from './components/webSearch.js';
+// Import OpenAI client
+import OpenAI from 'https://cdn.skypack.dev/openai@4.24.1';
 
 // API Endpoints
 const CHAT_COMPLETIONS_API_URL = 'https://api.openai.com/v1/chat/completions';
@@ -20,6 +22,13 @@ const RESPONSES_API_URL = 'https://api.openai.com/v1/responses';
 const TTS_API_URL = 'https://api.openai.com/v1/audio/speech';
 const IMAGE_GENERATION_API_URL = 'https://api.openai.com/v1/images/generations';
 const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
+
+// Initialize OpenAI client
+function getOpenAIClient() {
+    const apiKey = state.getApiKey();
+    if (!apiKey) return null;
+    return new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
+}
 
 // --- API Routing ---
 
@@ -349,46 +358,33 @@ async function fetchImageGeneration(apiKey, prompt) {
 /**
  * Fetches synthesized speech audio from OpenAI TTS API.
  */
-export async function fetchSpeech(text, voice = 'alloy', format = 'mp3', instructions = null) {
+export async function fetchSpeechFromChat(text, voice = 'alloy', format = 'mp3', instructions = null) {
     const apiKey = state.getApiKey();
     if (!apiKey) {
-        showNotification("Error: API key is not set. Cannot synthesize speech.", 'error');
+        showNotification("Error: API key is not set. Please go to Settings.", 'error');
         return null;
     }
-    if (!text || !text.trim()) {
-        console.warn("fetchSpeech called with empty text.");
-        return null;
-    }
-    console.log(`Requesting speech synthesis... Voice: ${voice}, Format: ${format}`);
-    const bodyPayload = {
-        model: "gpt-4o-mini-tts",
-        input: text,
-        voice: voice,
-        response_format: format,
-        ...(instructions && { instructions: instructions })
-    };
+
     try {
-        const response = await fetch(TTS_API_URL, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyPayload)
-        });
-        if (!response.ok) {
-            let errorMsg = `HTTP error! Status: ${response.status}`;
-            try { const errorData = await response.json(); errorMsg = errorData.error?.message || errorMsg; console.error("TTS API Error Response:", errorData); }
-            catch (parseError) { console.error("Failed to parse TTS API error response:", parseError); errorMsg = `TTS request failed with status ${response.status}. Could not parse error detail.`; }
-            if (response.status === 401) errorMsg = "Authentication Error: Invalid API Key for TTS.";
-            else if (response.status === 429) errorMsg = "Rate Limit Exceeded for TTS.";
-            else if (response.status === 400) errorMsg = `Invalid Request for TTS: ${errorMsg}`;
-            showNotification(`Speech Synthesis Error: ${errorMsg}`, 'error', 5000);
-            return null;
+        const openai = getOpenAIClient();
+        if (!openai) {
+            throw new Error("Failed to initialize OpenAI client");
         }
-        const audioBlob = await response.blob();
-        console.log(`Speech synthesis successful. Received audio blob (Type: ${audioBlob.type}, Size: ${audioBlob.size} bytes)`);
-        return audioBlob;
+
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-audio-preview",
+            modalities: ["text", "audio"],
+            audio: { voice, format },
+            messages: [{ role: "user", content: instructions ? `${instructions}\n\n${text}` : text }],
+        });
+
+        const base64Data = response.choices?.[0]?.message?.audio?.data;
+        if (!base64Data) return null;
+
+        return new Blob([Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))], { type: `audio/${format}` });
     } catch (error) {
-        console.error('Network or other error during TTS API call:', error);
-        showNotification(`Failed to synthesize speech: ${error.message}`, 'error');
+        console.error('Error fetching speech:', error);
+        showNotification('Failed to generate speech. Please try again.', 'error');
         return null;
     }
 }

@@ -6,9 +6,6 @@ import { escapeHTML } from '../utils.js';
 // --- DOM Elements ---
 const notificationContainer = document.getElementById('notificationContainer');
 
-// Define autoRemoveTimeoutId at the module level
-let autoRemoveTimeoutId;
-
 /**
  * Displays a temporary notification message on the screen.
  * @param {string} message - The message content to display.
@@ -21,10 +18,28 @@ export function showNotification(message, type = 'info', duration = 3000) {
         return;
     }
 
+    // Check for duplicate notifications that are still visible
+    const existingNotifications = Array.from(notificationContainer.children);
+    const duplicateNotification = existingNotifications.find(notification => {
+        const content = notification.querySelector('.notification-content');
+        return content && content.textContent === message;
+    });
+
+    // If a duplicate notification exists, don't create a new one
+    if (duplicateNotification) {
+        // Reset its timeout
+        const timeoutId = duplicateNotification.dataset.timeoutId;
+        if (timeoutId) {
+            clearTimeout(parseInt(timeoutId));
+        }
+        // Set new timeout
+        const newTimeoutId = setTimeout(() => removeNotification(duplicateNotification), duration);
+        duplicateNotification.dataset.timeoutId = newTimeoutId;
+        return;
+    }
+
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
-    
-    // Make notification element clickable
     notification.style.pointerEvents = 'auto';
 
     notification.innerHTML = `
@@ -35,24 +50,23 @@ export function showNotification(message, type = 'info', duration = 3000) {
     // --- Close Button Logic ---
     const closeButton = notification.querySelector('.notification-close');
     
-    // Reset any existing timeout
-    if (autoRemoveTimeoutId) {
-        clearTimeout(autoRemoveTimeoutId);
-    }
-
-    const removeNotification = () => {
+    const removeNotification = (notif) => {
         // Fade out animation 
-        notification.style.opacity = '0';
+        notif.style.opacity = '0';
+        // Clear the timeout
+        const timeoutId = notif.dataset.timeoutId;
+        if (timeoutId) {
+            clearTimeout(parseInt(timeoutId));
+        }
         // Use setTimeout to remove after fade-out transition completes
         setTimeout(() => {
-            if (notificationContainer.contains(notification)) {
-                notificationContainer.removeChild(notification);
+            if (notificationContainer.contains(notif)) {
+                notificationContainer.removeChild(notif);
             }
         }, 300); // Match CSS transition duration
-        clearTimeout(autoRemoveTimeoutId);
     };
 
-    closeButton?.addEventListener('click', removeNotification);
+    closeButton?.addEventListener('click', () => removeNotification(notification));
 
     // Append to container
     notificationContainer.appendChild(notification);
@@ -64,12 +78,20 @@ export function showNotification(message, type = 'info', duration = 3000) {
     }, 10);
 
     // --- Auto-remove Logic ---
-    autoRemoveTimeoutId = setTimeout(removeNotification, duration);
+    const timeoutId = setTimeout(() => removeNotification(notification), duration);
+    notification.dataset.timeoutId = timeoutId;
 
     // Pause auto-remove on hover
-    notification.addEventListener('mouseenter', () => clearTimeout(autoRemoveTimeoutId));
+    notification.addEventListener('mouseenter', () => {
+        const currentTimeoutId = notification.dataset.timeoutId;
+        if (currentTimeoutId) {
+            clearTimeout(parseInt(currentTimeoutId));
+        }
+    });
+    
     notification.addEventListener('mouseleave', () => {
-        autoRemoveTimeoutId = setTimeout(removeNotification, duration / 2);
+        const newTimeoutId = setTimeout(() => removeNotification(notification), duration / 2);
+        notification.dataset.timeoutId = newTimeoutId;
     });
 }
 

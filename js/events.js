@@ -184,7 +184,6 @@ function handleDelegatedClicks(event) {
         case 'searchButton':
         case 'researchButton':
         case 'voiceButton':
-        case 'darkModeBtn':
         case 'clearConversationsBtn':
         case 'helpFAQBtn':
         case 'logoutBtn':

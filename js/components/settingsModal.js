@@ -10,6 +10,7 @@ const settingsModalElement = document.getElementById('settingsModal');
 const apiKeyInput = document.getElementById('apiKey');
 const modelSelect = document.getElementById('modelSelect'); // Default model select
 const ttsInstructionsInput = document.getElementById('ttsInstructionsInput'); // Select the textarea
+const ttsVoiceSelect = document.getElementById('ttsVoiceSelect');
 const geminiApiKeyInput = document.getElementById('geminiApiKey'); // <<< NEW: Select Gemini API key
 const xaiApiKeyInput = document.getElementById('xaiApiKey'); // <<< NEW: Select X.AI API key
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
@@ -39,6 +40,7 @@ function loadGeneralSettingsIntoForm() {
     if (apiKeyInput) apiKeyInput.value = currentSettings.apiKey || '';
     if (modelSelect) modelSelect.value = currentSettings.model || 'gpt-4o';
     if (ttsInstructionsInput) ttsInstructionsInput.value = currentSettings.ttsInstructions || '';
+    if (ttsVoiceSelect) ttsVoiceSelect.value = currentSettings.ttsVoice || 'alloy';
     if (geminiApiKeyInput) geminiApiKeyInput.value = currentSettings.geminiApiKey || ''; // <<< NEW: Load Gemini API key
     if (xaiApiKeyInput) xaiApiKeyInput.value = currentSettings.xaiApiKey || ''; // <<< NEW: Load X.AI API key
     console.log("General settings loaded into form.");
@@ -73,10 +75,11 @@ function handleGeneralSettingsSave() {
     const newApiKey = apiKeyInput?.value.trim() ?? '';
     const newModel = modelSelect?.value ?? 'gpt-4o';
     const newTtsInstructions = ttsInstructionsInput?.value.trim() ?? '';
+    const newTtsVoice = ttsVoiceSelect?.value ?? 'alloy';
     const newGeminiApiKey = geminiApiKeyInput?.value.trim() ?? '';
     const newXaiApiKey = xaiApiKeyInput?.value.trim() ?? ''; // NEW: Get X.AI API key value
 
-    state.saveSettings(newApiKey, newModel, newTtsInstructions, newGeminiApiKey, newXaiApiKey);
+    state.saveSettings(newApiKey, newModel, newTtsInstructions, newGeminiApiKey, newXaiApiKey, newTtsVoice);
 
     showNotification('General settings saved!', 'success');
 
@@ -99,6 +102,7 @@ function updateSettingsForm() {
     if (apiKeyInput) apiKeyInput.value = settings.apiKey;
     if (modelSelect) modelSelect.value = settings.model;
     if (ttsInstructionsInput) ttsInstructionsInput.value = settings.ttsInstructions;
+    if (ttsVoiceSelect) ttsVoiceSelect.value = settings.ttsVoice;
     if (geminiApiKeyInput) geminiApiKeyInput.value = settings.geminiApiKey;
     if (xaiApiKeyInput) xaiApiKeyInput.value = settings.xaiApiKey; // NEW: Set X.AI API key value
 

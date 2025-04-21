@@ -40,6 +40,38 @@ const clearConversationsBtn = document.getElementById('clearConversationsBtn');
 const helpFAQBtn = document.getElementById('helpFAQBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 
+// Add after the DOM element declarations
+const DARK_MODE_KEY = 'darkModeEnabled';
+
+function applyDarkMode(isDark) {
+    document.body.classList.toggle('dark-mode', isDark);
+    if (darkModeBtn) {
+        darkModeBtn.title = isDark ? "Switch to Light Mode" : "Switch to Dark Mode";
+        const svg = darkModeBtn.querySelector('svg');
+        if (svg) {
+            if (isDark) {
+                svg.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+            } else {
+                svg.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+            }
+        }
+    }
+}
+
+function toggleDarkModePreference() {
+    const isCurrentlyDark = document.body.classList.contains('dark-mode');
+    const newIsDark = !isCurrentlyDark;
+    localStorage.setItem(DARK_MODE_KEY, newIsDark.toString());
+    applyDarkMode(newIsDark);
+    showNotification(newIsDark ? 'Dark mode enabled' : 'Light mode enabled', 'success', 1500);
+}
+
+function loadDarkModePreference() {
+    const savedPreference = localStorage.getItem(DARK_MODE_KEY);
+    const isDark = savedPreference === 'true';
+    applyDarkMode(isDark);
+}
+
 // --- Sidebar Logic ---
 
 function toggleSidebar(visible) {
@@ -465,14 +497,18 @@ export function initializeSidebar() {
     }
 
     // Footer Buttons
-    darkModeBtn?.addEventListener('click', handleNotImplemented);
+    darkModeBtn?.addEventListener('click', toggleDarkModePreference);
     helpFAQBtn?.addEventListener('click', handleNotImplemented);
     logoutBtn?.addEventListener('click', handleNotImplemented);
     clearConversationsBtn?.addEventListener('click', handleClearAllConversations);
 
     // Initial list rendering
     renderChatList();
-    renderCustomGptList(); // <<< Render GPT list on load
+    renderCustomGptList();
+    
+    // Load dark mode preference
+    loadDarkModePreference();
+
     console.log("Sidebar Initialized.");
 }
 

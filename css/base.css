@@ -17,6 +17,7 @@
 
  /* Define CSS variables (optional but recommended for themes/consistency) */
  :root {
+     /* Light mode variables */
      --background-primary: #ffffff;
      --background-secondary: #f7f7f8;
      --background-tertiary: #f0f0f0;
@@ -31,22 +32,21 @@
      --error-color: #e53935;
      --info-color: #2196f3;
 
+     /* Layout variables */
      --header-height: 57px;
-     /* Approximate height of header */
      --input-area-height: 145px;
-     /* Approximate height of input area + toolbar */
      --sidebar-width: 260px;
 
-     /* Dark mode variables */
-     --dark-background-primary: #1e1e2e;
-     --dark-background-secondary: #2a2a3a;
-     --dark-background-tertiary: #343444;
-     --dark-text-primary: #e0e0e0;
+     /* Dark mode variables - updated for better contrast */
+     --dark-background-primary: #1a1b26;
+     --dark-background-secondary: #24283b;
+     --dark-background-tertiary: #2f334d;
+     --dark-text-primary: #c0caf5;
      --dark-text-secondary: #ffffff;
-     --dark-text-muted: #a0a0b0;
-     --dark-border-primary: #444455;
-     --dark-border-secondary: #555566;
-     --dark-border-focus: #777788;
+     --dark-text-muted: #7982a9;
+     --dark-border-primary: #414868;
+     --dark-border-secondary: #565f89;
+     --dark-border-focus: #7aa2f7;
  }
 
  /* Basic link styling (if needed) */

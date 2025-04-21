@@ -1,6 +1,7 @@
 // MODIFIED: Removed formatContent import if it was here
 import { escapeHTML } from './utils.js';
 import * as events from './events.js';
+import { showNotification } from './components/notification.js';
 
 // --- DOM Element Selectors ---
 export const sidebar = document.getElementById('sidebar');
@@ -191,13 +192,14 @@ export function removeImagePreview() {
     }
 }
 
-// --- Notifications ---
-export function showNotification(message, type = 'info', duration = 3000) {
-    console.warn('Deprecated: Using old notification system. Please import from notificationHelper.js instead');
-    // Forward to new system
-    import('./notificationHelper.js').then(module => {
-        module.showNotification(message, type, duration);
-    });
+/**
+ * Shows a notification to the user.
+ * @param {string} message - The message to display.
+ * @param {'info' | 'success' | 'error' | 'warning'} type - The type of notification.
+ * @param {number} duration - How long to show the notification (in ms).
+ */
+export function displayNotification(message, type = 'info', duration = 3000) {
+    showNotification(message, type, duration);
 }
 
 // --- Mobile Toolbar Handling ---

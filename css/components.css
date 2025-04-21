@@ -164,18 +164,14 @@
 /* Input Area Components */
 .input-box {
     width: 100%;
-    /* Should be handled by flex-grow now */
     flex-grow: 1;
-    /* Allow input to take remaining space */
     border: 1px solid var(--border-primary);
     border-radius: 1.5rem;
-    padding: 0.875rem 1rem;
-    /* Adjusted padding, right padding might be overridden by specific button logic */
+    padding: 0.75rem 1rem;
     font-size: 1rem;
     background-color: var(--background-primary);
     resize: none;
-    min-height: calc(1.4em + 1.75rem);
-    /* Calculate based on line-height + padding */
+    min-height: calc(1.4em + 1.5rem);
     max-height: 12.5rem;
     overflow-y: auto;
     line-height: 1.4;
@@ -196,20 +192,17 @@
     background-color: var(--accent-color);
     color: white;
     border: none;
-    border-radius: 0.25rem;
-    /* Keep slightly rectangular or change to 50% for circle */
-    width: 3rem;
-    height: 3rem;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
     transition: background-color 0.2s;
     position: relative;
-    margin-left: 8px;
-    /* Desktop margin */
+    margin-left: 4px;
     flex-shrink: 0;
-    /* Prevent shrinking */
 }
 
 .send-button:hover {
@@ -220,27 +213,94 @@
     stroke: currentColor;
 }
 
+/* Input Container for better layout */
+.input-container {
+    position: relative;
+    padding: 0.5rem 0.75rem;
+    box-sizing: border-box;
+    margin-bottom: 2px;
+}
+
+/* Adjust spacing for the input area */
+.input-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 /* Bottom Toolbar Components */
 .bottom-toolbar {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 10px;
-    margin-top: 12px;
+    gap: 6px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    min-height: 36px;
+}
+
+/* Desktop view styles for streamlined toolbar */
+@media (min-width: 601px) {
+    /* Force all text hidden in toolbar buttons */
+    .bottom-toolbar button span,
+    .bottom-toolbar .tool-button span {
+        display: none !important;
+        position: absolute;
+        opacity: 0;
+    }
+    
+    /* Only show text on hover */
+    .bottom-toolbar button:hover span,
+    .bottom-toolbar .tool-button:hover span {
+        display: inline-block !important;
+        opacity: 1;
+        position: static;
+        margin-left: 6px;
+    }
+    
+    /* Ensure consistent button sizing */
+    .bottom-toolbar button, 
+    .bottom-toolbar .tool-button,
+    .bottom-toolbar .circle-button {
+        height: 36px !important;
+        width: 36px !important;
+        padding: 6px !important;
+        border-radius: 50% !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        overflow: visible;
+    }
+    
+    /* Special hover state for buttons with text */
+    .bottom-toolbar .tool-button:hover {
+        width: auto !important;
+        padding: 6px 12px !important;
+        border-radius: 18px !important;
+    }
+    
+    /* Force clean SVG alignment */
+    .bottom-toolbar button svg,
+    .bottom-toolbar .tool-button svg,
+    .bottom-toolbar .circle-button svg {
+        margin: 0 !important;
+    }
 }
 
 .tool-button {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
     background-color: var(--background-tertiary);
     border: 1px solid var(--border-primary);
-    border-radius: 20px;
+    border-radius: 18px;
     color: var(--text-primary);
     font-size: 14px;
     cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, cursor 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, cursor 0.2s ease, width 0.2s ease;
 }
 
 .tool-button:hover {
@@ -277,10 +337,9 @@
     stroke: var(--text-muted);
 }
 
-
 .circle-button {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background-color: var(--background-tertiary);
     border: 1px solid var(--border-primary);
@@ -818,12 +877,11 @@ body.dark-mode .notification {
         display: none;
         position: absolute;
         bottom: calc(100% + 5px);
-        /* Position above input row */
         left: 10px;
         background-color: var(--background-primary);
         border: 1px solid var(--border-primary);
-        border-radius: 22px;
-        padding: 6px 8px;
+        border-radius: 18px;
+        padding: 4px 6px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         z-index: 10;
     }
@@ -838,14 +896,10 @@ body.dark-mode .notification {
     #mobileOptionsToggleBtn {
         display: flex;
         position: relative;
-        /* Changed from absolute */
         margin-right: 4px;
-        /* Reduced margin */
         z-index: 6;
-        width: 40px;
-        /* Consistent size */
-        height: 40px;
-        /* Consistent size */
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         background-color: var(--background-tertiary);
         border: 1px solid var(--border-primary);
@@ -854,7 +908,6 @@ body.dark-mode .notification {
         cursor: pointer;
         color: var(--text-primary);
         flex-shrink: 0;
-        /* Prevent shrinking */
     }
 
     #mobileOptionsToggleBtn:hover {
@@ -866,27 +919,18 @@ body.dark-mode .notification {
     }
 
     .input-container .input-box {
-        padding: 10px 12px;
-        /* Adjusted padding */
-        min-height: 40px;
-        /* Consistent min-height */
+        padding: 8px 12px;
+        min-height: 36px;
         flex-grow: 1;
-        /* Ensure it grows */
     }
 
     .input-container .send-button {
         position: relative;
-        /* Changed from absolute */
         margin-left: 4px;
-        /* Reduced margin */
-        width: 40px;
-        /* Consistent size */
-        height: 40px;
-        /* Consistent size */
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
-        /* Make it circular? Or keep original */
         flex-shrink: 0;
-        /* Prevent shrinking */
     }
 
     .input-container {
@@ -896,14 +940,14 @@ body.dark-mode .notification {
     .input-container .bottom-toolbar.mobile-visible .tool-button {
         font-size: 0;
         padding: 6px;
-        min-width: 36px;
-        width: 36px;
-        height: 36px;
+        min-width: 32px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         display: flex;
         justify-content: center;
         align-items: center;
-        margin: 0 3px;
+        margin: 0 2px;
         background: none;
         border: none;
         color: var(--text-muted);
@@ -1128,16 +1172,14 @@ body.dark-mode .notification {
     .menu-button,
     .header-action,
     .action-button {
-        min-width: 44px;
-        /* Apple HIG minimum */
-        min-height: 44px;
+        min-width: 40px;
+        min-height: 40px;
         padding: 0.5rem;
-        /* Adjust padding */
     }
 
     .send-button {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
     }
 
     .input-box {
@@ -1146,10 +1188,9 @@ body.dark-mode .notification {
     }
 
     .bottom-toolbar .tool-button {
-        /* If shown on tablet */
-        min-width: 44px;
-        min-height: 44px;
-        padding: 0.5rem;
+        min-width: 36px;
+        min-height: 36px;
+        padding: 0.4rem;
         border-radius: 50%;
     }
 
@@ -1745,4 +1786,129 @@ body.dark-mode .help-section h2 {
 /* Hide remove button in history pills */
 .user-bubble .message-attachments .attached-file-pill .remove-file-button {
     display: none !important;
+}
+
+/* Decrease whitespace in the input footer */
+.input-footer-note {
+    font-size: 9px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding: 0;
+    line-height: 1;
+}
+
+/* Dark mode overrides */
+body.dark-mode {
+    background-color: var(--dark-background-primary);
+    color: var(--dark-text-primary);
+}
+
+/* Example prompts dark mode */
+body.dark-mode .example-prompt {
+    background-color: var(--dark-background-secondary);
+    border-color: var(--dark-border-primary);
+    color: var(--dark-text-primary);
+}
+
+body.dark-mode .example-prompt:hover {
+    background-color: var(--dark-background-tertiary);
+    border-color: var(--dark-border-secondary);
+}
+
+/* Settings modal dark mode */
+body.dark-mode .modal-content {
+    background-color: var(--dark-background-secondary);
+    color: var(--dark-text-primary);
+    border-color: var(--dark-border-primary);
+}
+
+body.dark-mode .form-input,
+body.dark-mode .form-select,
+body.dark-mode textarea.form-input {
+    background-color: var(--dark-background-primary);
+    border-color: var(--dark-border-primary);
+    color: var(--dark-text-primary);
+}
+
+body.dark-mode .form-input:focus,
+body.dark-mode .form-select:focus,
+body.dark-mode textarea.form-input:focus {
+    border-color: var(--dark-border-focus);
+}
+
+body.dark-mode .form-note {
+    color: var(--dark-text-muted);
+}
+
+/* Input area dark mode */
+body.dark-mode .input-box {
+    background-color: var(--dark-background-secondary);
+    border-color: var(--dark-border-primary);
+    color: var(--dark-text-primary);
+}
+
+body.dark-mode .input-box:focus {
+    border-color: var(--dark-border-focus);
+}
+
+/* Toolbar buttons dark mode */
+body.dark-mode .tool-button,
+body.dark-mode .circle-button {
+    background-color: var(--dark-background-tertiary);
+    border-color: var(--dark-border-primary);
+    color: var(--dark-text-primary);
+}
+
+body.dark-mode .tool-button:hover,
+body.dark-mode .circle-button:hover {
+    background-color: var(--dark-background-primary);
+    border-color: var(--dark-border-secondary);
+}
+
+/* Welcome screen dark mode */
+body.dark-mode .welcome-title {
+    color: var(--dark-text-primary);
+}
+
+body.dark-mode .welcome-subtitle {
+    color: var(--dark-text-muted);
+}
+
+/* Sidebar dark mode enhancements */
+body.dark-mode .sidebar {
+    background-color: var(--dark-background-secondary);
+    border-color: var(--dark-border-primary);
+}
+
+body.dark-mode .settings-button {
+    color: var(--dark-text-primary);
+}
+
+body.dark-mode .settings-button:hover {
+    background-color: var(--dark-background-tertiary);
+}
+
+/* Header dark mode */
+body.dark-mode .header {
+    border-color: var(--dark-border-primary);
+}
+
+body.dark-mode .header-model-select {
+    color: var(--dark-text-primary);
+}
+
+/* Footer note dark mode */
+body.dark-mode .input-footer-note {
+    color: var(--dark-text-muted);
+}
+
+/* Close button dark mode */
+body.dark-mode .close-button {
+    color: var(--dark-text-muted);
+}
+
+body.dark-mode .close-button:hover {
+    color: var(--dark-text-primary);
 }
