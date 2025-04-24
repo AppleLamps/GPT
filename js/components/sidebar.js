@@ -152,10 +152,11 @@ const history = await chatStore.loadChat(chatId);
 
 
 async function handleDeleteChat(chatId) {
-    const chatList = chatStore.getChatList();
+    const chatList = await chatStore.getChatList();
     const chatToDelete = chatList.find(c => c.id === chatId);
-    const titleToDelete = chatToDelete ? `"${chatToDelete.title}"` : `this chat (ID: ${chatId})`;
+    const titleToDelete = chatToDelete ? `"${escapeHTML(chatToDelete.title)}"` : `this chat (ID: ${chatId})`;
 
+    toggleSidebar(false);
     showConfirmDialog(`Are you sure you want to delete the chat ${titleToDelete}?`, async () => {
         try {
             const deleted = await chatStore.deleteChat(chatId);
@@ -330,7 +331,8 @@ function handleEditCustomGpt(gptId) {
     console.log(`Attempting to edit Custom GPT: ${gptId}`);
     const config = gptStore.loadConfig(gptId);
     if (config) {
-        openCreatorModal(config); // Open the modal pre-filled for editing
+        toggleSidebar(false);
+        openCreatorModal(config);
         // No need to close sidebar here
     } else {
         showNotification("Could not load GPT data for editing.", "error");
@@ -420,24 +422,22 @@ await handleAutoSaveCurrentChat();
 }
 
 async function handleClearAllConversations() {
-    showConfirmDialog("Are you sure you want to delete ALL saved CHAT conversations? Custom GPT configurations will NOT be deleted. This cannot be undone.", () => { // Removed inner async
-        chatStore.deleteAllChats() // Call the async function
-            .then(success => { // Handle the promise
+    toggleSidebar(false);
+    showConfirmDialog("Are you sure you want to delete ALL saved CHAT conversations? Custom GPT configurations will NOT be deleted. This cannot be undone.", () => {
+        chatStore.deleteAllChats()
+            .then(success => {
                 if (success) {
-                    // If active chat was a saved one, clear state
                     if (state.getActiveChatId()) {
-                        state.clearChatHistory(); // Reset active state
+                        state.clearChatHistory();
                     }
-                    // Keep active Custom GPT if any, just clear the chat history
                     showWelcomeInterface();
-                    renderChatList(); // Update sidebar (should be empty)
+                    renderChatList();
                     showNotification("All chat conversations deleted.", "success");
-                    toggleSidebar(false);
                 } else {
                     showNotification("Failed to delete all chat conversations.", "error");
                 }
             })
-            .catch(error => { // Handle potential errors
+            .catch(error => {
                 console.error("Error clearing all chats:", error);
                 showNotification(`Error clearing chats: ${error.message}`, "error");
             });
@@ -503,6 +503,7 @@ async function handleLogout() {
         }
     } else {
         // If not logged in, show login modal
+        toggleSidebar(false);
         showAuthModal();
     }
 }
