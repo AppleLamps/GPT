@@ -1,0 +1,6 @@
+﻿.DS_Store
+.vscode/
+.idea/
+.vercel/
+*.log
+*.zip

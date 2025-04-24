@@ -1,0 +1,10 @@
+{
+  "name": "Example Custom GPT",
+  "description": "A helpful assistant that specializes in coding tasks",
+  "instructions": "You are a helpful coding assistant. You help users write clean, efficient code and solve programming problems.",
+  "capabilities": {
+    "webSearch": true,
+    "imageGeneration": false
+  },
+  "knowledgeFiles": []
+} 

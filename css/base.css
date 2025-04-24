@@ -1,0 +1,127 @@
+ /* Base styles, resets, variables, and global element styles */
+
+ * {
+     box-sizing: border-box;
+     margin: 0;
+     padding: 0;
+     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+ }
+
+ body {
+     background-color: #ffffff;
+     color: #343541;
+     height: 100vh;
+     overflow: hidden;
+     /* Prevent scrolling on the body itself */
+ }
+
+ /* Define CSS variables (optional but recommended for themes/consistency) */
+ :root {
+     /* Light mode variables */
+     --background-primary: #ffffff;
+     --background-secondary: #f7f7f8;
+     --background-tertiary: #f0f0f0;
+     --text-primary: #343541;
+     --text-secondary: #000;
+     --text-muted: #8e8ea0;
+     --border-primary: #e5e5e5;
+     --border-secondary: #f0f0f0;
+     --border-focus: #c5c5d2;
+     --accent-color: #10a37f;
+     --accent-hover: #0d8c6e;
+     --error-color: #e53935;
+     --info-color: #2196f3;
+
+     /* Layout variables */
+     --header-height: 57px;
+     --input-area-height: 145px;
+     --sidebar-width: 260px;
+
+     /* Dark mode variables - updated for better contrast */
+     --dark-background-primary: #1a1b26;
+     --dark-background-secondary: #24283b;
+     --dark-background-tertiary: #2f334d;
+     --dark-text-primary: #c0caf5;
+     --dark-text-secondary: #ffffff;
+     --dark-text-muted: #7982a9;
+     --dark-border-primary: #414868;
+     --dark-border-secondary: #565f89;
+     --dark-border-focus: #7aa2f7;
+ }
+
+ /* Basic link styling (if needed) */
+ a {
+     color: var(--accent-color);
+     text-decoration: none;
+ }
+
+ a:hover {
+     text-decoration: underline;
+ }
+
+ /* Keyframes used by components */
+ @keyframes slide-in {
+     from {
+         transform: translateX(100%);
+         opacity: 0;
+     }
+
+     to {
+         transform: translateX(0);
+         opacity: 1;
+     }
+ }
+
+ @keyframes fade-out {
+     from {
+         opacity: 1;
+     }
+
+     to {
+         opacity: 0;
+         transform: translateY(-10px);
+     }
+ }
+
+ /* Dark mode class to apply to body */
+ body.dark-mode {
+     background-color: var(--dark-background-primary);
+     color: var(--dark-text-primary);
+ }
+
+ /* Dark mode styles for key components */
+ body.dark-mode .header {
+     background-color: var(--dark-background-primary);
+ }
+
+ body.dark-mode .user-bubble {
+     color: var(--dark-text-primary);
+ }
+
+ body.dark-mode .ai-message-content pre {
+     background-color: var(--dark-background-tertiary);
+     border: 1px solid var(--dark-border-primary);
+ }
+
+ /* Add more dark mode overrides for components as needed */
+
+ /* Improve focus states for better accessibility */
+ button:focus, 
+ input:focus, 
+ textarea:focus,
+ select:focus {
+     outline: 2px solid var(--accent-color);
+     outline-offset: 2px;
+ }
+
+ /* Increase contrast for text elements */
+ .text-muted {
+     color: #6b6b80; /* Darker than your current muted color for better contrast */
+ }
+
+ /* Add proper focus indicators for interactive elements */
+ .tool-button:focus-visible,
+ .header-action:focus-visible {
+     outline: 2px solid var(--accent-color);
+     outline-offset: 2px;
+ }

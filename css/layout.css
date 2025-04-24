@@ -1,0 +1,289 @@
+/* Styles defining the main page structure and layout */
+
+/* Main content area adjustments if sidebar is considered */
+/* .main-content {
+    transition: margin-left 0.3s ease; /* Smooth transition when sidebar opens/closes */
+/* } */
+
+/* .main-content.sidebar-visible {
+    margin-left: var(--sidebar-width); /* Push content over when sidebar is open */
+/* } */
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--border-secondary);
+    background-color: var(--background-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    height: var(--header-height);
+    box-sizing: border-box;
+}
+
+.menu-button, .header-right-actions {
+    flex: 0 0 auto;
+    /* Set fixed width to ensure equal space on both sides */
+    width: 44px;
+}
+
+.header-model-selector {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Chat container */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    /* Adjust height dynamically based on actual input container height */
+    height: calc(100dvh - var(--header-height) - var(--dynamic-input-area-height, var(--input-area-height)));
+    /* Fallback */
+    height: calc(100vh - var(--header-height) - var(--dynamic-input-area-height, var(--input-area-height)));
+    overflow-y: auto;
+    /* Add scroll-padding-bottom to prevent content hiding behind input */
+    scroll-padding-bottom: 1rem;
+    padding: 0 2rem 1rem 2rem;
+    /* Desktop padding */
+    box-sizing: border-box;
+    transition: height 0.2s ease-in-out; /* Smooth height transition */
+}
+
+/* Input area */
+.input-container {
+    position: sticky; /* Change from fixed to sticky */
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    /* Remove background and border */
+    /* background-color: var(--background-primary); */ 
+    /* border-top: 1px solid var(--border-secondary); */
+    background-color: transparent;
+    border-top: none;
+    z-index: 5;
+    max-width: 100%;
+    box-sizing: border-box;
+    height: auto; /* Allow height to be determined by content */
+    /* min-height: var(--input-area-height); Remove fixed min-height if problematic */
+}
+
+.input-row {
+    display: flex;
+    /* Align items to the bottom, especially useful when textarea grows */
+    align-items: flex-end;
+    max-width: 100%;
+    gap: 0.5rem;
+    /* Desktop gap */
+    /* Add some padding to lift the content off the very bottom */
+    padding-bottom: 0.5rem;
+}
+
+/* .input-container.sidebar-visible {
+    left: var(--sidebar-width);
+} */
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    background-color: var(--background-secondary);
+    border-right: 1px solid var(--border-primary);
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar.visible {
+    transform: translateX(0);
+}
+
+.sidebar-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.sidebar-section {
+    padding: 1rem;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding: 1rem;
+    border-top: 1px solid var(--border-primary);
+}
+
+/* Overlay for sidebar */
+.overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+    /* Below sidebar, above content */
+}
+
+.overlay.visible {
+    display: block;
+}
+
+/* Welcome screen layout */
+.welcome-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 0 1.25rem;
+}
+
+/* Modal layout */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.visible {
+    display: flex;
+}
+
+.modal-content {
+    background-color: var(--background-primary);
+    border-radius: 0.5rem;
+    width: 100%;
+    max-width: 31.25rem;
+    padding: 1.5rem;
+    margin: 1rem;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+
+/* Notification container layout */
+.notification-container {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    max-width: 18.75rem;
+    pointer-events: none;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    .chat-container {
+        padding: 0 1rem 0.5rem 1rem;
+        /* Ensure height calculation uses dvh and dynamic variable */
+        height: calc(100dvh - var(--header-height) - var(--dynamic-input-area-height, var(--input-area-height)));
+        /* Fallback */
+        height: calc(100vh - var(--header-height) - var(--dynamic-input-area-height, var(--input-area-height)));
+        scroll-padding-bottom: 0.5rem;
+    }
+
+    .modal-content {
+        max-width: calc(100vw - 2rem);
+        margin: 1rem;
+    }
+
+    .notification-container {
+        max-width: calc(100vw - 2.5rem);
+        top: 1rem;
+        right: 1rem;
+    }
+
+    /* Adjust input container for mobile */
+    .input-container {
+        padding: 0.5rem; /* Simplified padding */
+        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+        /* Keep height auto */
+        background-color: transparent; /* Ensure transparency on mobile too */
+        border-top: none; /* Ensure no border on mobile */
+    }
+
+    .input-row {
+        gap: 0.25rem;
+        /* Reduce gap between elements */
+        align-items: flex-end;
+        /* Keep alignment */
+        padding-bottom: 0; /* Reset padding-bottom from desktop */
+    }
+
+    .sidebar {
+        width: 85vw;
+        max-width: 20rem;
+    }
+
+    /* Fix header layout for mobile */
+    .header {
+        padding: 0.875rem 0.5rem;
+    }
+    
+    .menu-button, .header-right-actions {
+        width: 40px; /* Slightly smaller on mobile */
+    }
+    
+    .header-model-selector {
+        flex: 1 1 auto;        /* Allow grow/shrink, take available space */
+        display: flex;         /* Use flex to align children (select+span) */
+        justify-content: center;/* Center the children within this container */
+        align-items: center;   /* Vertically align children */
+        min-width: 0;          /* Prevent flexbox overflow issues */
+        margin: 0 8px;         /* Add small horizontal space from side buttons */
+        overflow: hidden;      /* Hide overflow */
+        /* position: absolute; left: 50%; transform: ... removed */
+    }
+
+    .menu-button {
+        flex: 0 0 auto; /* Don't grow, don't shrink, use base size */
+    }
+    
+    .header-right-actions {
+        flex: 0 0 auto; /* Don't grow, don't shrink, use base size */
+        position: relative;
+        z-index: 10;
+    }
+}
+
+/* Further adjustments for smaller screens if needed */
+@media (max-width: 600px) {
+    .input-container {
+        padding: 0.25rem; /* Adjust padding for very small screens */
+        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    }
+
+    .input-row {
+        gap: 4px;
+        /* Tighter gap */
+    }
+}
