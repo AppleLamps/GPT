@@ -96,6 +96,7 @@
 .ai-message-content {
     padding: 0.5rem 1rem;
     line-height: 1.5;
+    max-width: 70%; /* Limit width */
 }
 
 .ai-message-content.streaming-content {
@@ -2763,4 +2764,8 @@ body.dark-mode .secondary-button:hover {
     background-color: rgba(var(--dark-accent-color-rgb), 0.15);
     color: var(--dark-accent-hover);
     border-color: var(--dark-accent-hover);
+}
+
+.ai-message-content hr {
+  display: none;
 }
