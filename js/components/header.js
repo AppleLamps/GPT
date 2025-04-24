@@ -1,14 +1,16 @@
 // ===== FILE: js/components/header.js =====
 import * as state from '../state.js';
-import { showNotification } from './notification.js';
-import { updateInputUIForModel } from './chatInput.js';
-// <<< MODIFIED: Import openSettings and updateSettingsModalSelect ONCE >>>
+import { showNotification } from '../notificationHelper.js';
+import { updateInputUIForModel, removeImagePreview, renderFilePreviews, clearMessageInput } from './chatInput.js';
 import { openSettings, updateSettingsModalSelect } from './settingsModal.js';
+import { handleNewChat as sidebarHandleNewChat, renderChatList, renderCustomGptList } from './sidebar.js';
+import { clearMessageListUI, showWelcomeInterface } from './messageList.js';
 
 // --- DOM Elements ---
 const headerModelSelectElement = document.getElementById('headerModelSelect'); // Default model selector
 const activeGptDisplayElement = document.getElementById('activeGptDisplay'); // Span for active GPT name
 const headerSettingsBtnElement = document.getElementById('headerSettingsBtn');
+const headerNewChatBtnElement = document.getElementById('headerNewChatBtn'); // <<< NEW: Header New Chat Button
 
 // --- Header Logic ---
 
@@ -80,9 +82,36 @@ export function updateActiveGptDisplay() {
         // Update input UI based on the actual *default* model selected
         updateInputUIForModel(state.getSelectedModelSetting()); // Pass the default model string
     }
-    // <<< REMOVED Duplicate code block from here >>>
 }
 
+/**
+ * Starts a new chat session, preserving the currently active Custom GPT if one is selected.
+ */
+function handleHeaderNewChat() {
+    const activeGpt = state.getActiveCustomGptConfig();
+
+    if (activeGpt) {
+        console.log(`Starting new chat with active Custom GPT: ${activeGpt.name}`);
+        // Save current chat if needed (logic might be different than sidebar's handleAutoSave)
+        // For now, just clear the state but keep the GPT active
+        state.clearChatHistory(); // Clears history, files, activeChatId
+        clearMessageListUI();
+        removeImagePreview();
+        renderFilePreviews();
+        clearMessageInput();
+        showWelcomeInterface(); // Show welcome screen for the active GPT
+        // No need to updateInputUIForModel as the model context (GPT-4o) remains the same
+        // No need to updateActiveGptDisplay as the GPT remains active
+        renderChatList(); // Update chat list (unhighlight active chat)
+        // renderCustomGptList(); // GPT list highlight remains the same
+        // Do not toggle sidebar
+        showNotification(`New chat started with ${activeGpt.name}`, 'info', 1500);
+    } else {
+        console.log("Starting new default chat via header button.");
+        // If no custom GPT is active, use the standard new chat logic from the sidebar
+        sidebarHandleNewChat();
+    }
+}
 
 // --- Initialization ---
 
@@ -113,18 +142,16 @@ export function initializeHeader() {
         console.error("Header settings button element ('headerSettingsBtn') not found.");
     }
 
+    // <<< NEW: Initialize Header New Chat Button >>>
+    if (headerNewChatBtnElement) {
+        headerNewChatBtnElement.addEventListener('click', handleHeaderNewChat);
+        console.log("Header new chat button listener attached.");
+    } else {
+        console.error("Header new chat button element ('headerNewChatBtn') not found.");
+    }
+
     // Set initial header state based on whether a GPT is active
     updateActiveGptDisplay();
 
-    // Add listeners for other header buttons if they become interactive later
-    const headerNewChatBtn = document.getElementById('headerNewChatBtn');
-    if (headerNewChatBtn) {
-        const sidebarNewChatBtn = document.getElementById('newChatBtn');
-        if (sidebarNewChatBtn) {
-            headerNewChatBtn.addEventListener('click', () => sidebarNewChatBtn.click());
-        } else {
-            console.error("Sidebar new chat button not found for header button proxy.");
-        }
-    }
     console.log("Header Initialized.");
 }

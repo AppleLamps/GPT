@@ -595,7 +595,7 @@ export function updateInputUIForModel(activeGpt) { // Pass activeGpt config obje
     if (imageGenButton) {
         const canUseImageGen = !isDeepResearchModeActive && (isGpt4o || isGpt41 || isGpt45Preview);
         imageGenButton.disabled = !canUseImageGen;
-        imageGenButton.title = canUseImageGen ? "Toggle Image Generation Mode (DALL-E 3)" : (isDeepResearchModeActive ? "Image Generation disabled in Deep Research mode" : "Image Generation requires GPT-4o, GPT-4.1, or GPT-4.5");
+        imageGenButton.title = canUseImageGen ? "Toggle Image Generation Mode" : (isDeepResearchModeActive ? "Image Generation disabled in Deep Research mode" : "Image Generation requires GPT-4o, GPT-4.1, or GPT-4.5");
         if (!canUseImageGen) {
             imageGenButton.classList.remove('active');
             // Ensure state matches UI if mode changed

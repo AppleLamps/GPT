@@ -13,28 +13,84 @@
 .header {
     display: flex;
     align-items: center;
-    padding: 0.875rem 1rem;
-    border-bottom: 1px solid var(--border-secondary);
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-primary);
     background-color: var(--background-primary);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     position: sticky;
     top: 0;
-    z-index: 10;
-    height: var(--header-height);
+    z-index: 10; /* Keep header above content */
+    height: var(--header-height); /* Assuming var is defined */
     box-sizing: border-box;
 }
 
-.menu-button, .header-right-actions {
-    flex: 0 0 auto;
-    /* Set fixed width to ensure equal space on both sides */
-    width: 44px;
+.header-left,
+.header-center,
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Consistent gap */
 }
 
-.header-model-selector {
-    flex: 1;
-    display: flex;
+.header-left {
+    flex-shrink: 0;
+    justify-content: flex-start;
+    /* Prevents shrinking on smaller screens */
+}
+
+.header-center {
+    flex-grow: 1;
     justify-content: center;
+    min-width: 0; /* Allows center content to shrink if needed */
+}
+
+.header-right {
+    flex-shrink: 0;
+    justify-content: flex-end;
+}
+
+/* Default model selector specific style */
+.header-model-select {
+    /* Add any specific styling for the dropdown here */
+    /* e.g., font-size, padding, border */
+    padding: 4px 8px;
+    border: 1px solid var(--border-secondary);
+    border-radius: 4px;
+    background-color: var(--background-secondary);
+    color: var(--text-primary);
+    font-size: 14px;
+    max-width: 200px; /* Adjust as needed */
+}
+
+/* Active GPT display specific style */
+.active-gpt-display {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-left: 5px; /* Space from model selector */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px; /* Limit width */
+}
+
+/* Icon button style (already likely in components.css, but ensure it exists) */
+.icon-button {
+    background: none;
+    border: none;
+    padding: 6px;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--text-secondary);
+    display: inline-flex; /* Aligns SVG nicely */
     align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.icon-button:hover {
+    background-color: var(--background-hover);
+    color: var(--text-primary);
 }
 
 /* Chat container */

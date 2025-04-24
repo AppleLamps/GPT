@@ -357,7 +357,6 @@ async function handleLoadCustomGpt(gptId) { // <<< ASYNC
  */
 async function handleEditCustomGpt(gptId) { // <<< ASYNC
     console.log(`Attempting to edit Custom GPT: ${gptId}`);
-<<<<<<< HEAD
     try {
         const config = await gptStore.loadConfig(gptId); // <<< AWAIT
         if (config) {
@@ -369,18 +368,7 @@ async function handleEditCustomGpt(gptId) { // <<< ASYNC
     } catch (error) {
         console.error("Error loading GPT for edit:", error);
         showNotification("Error loading GPT data for editing.", "error");
-        // No need to close sidebar here - Removed erroneous else block
-=======
-    const config = gptStore.loadConfig(gptId);
-    if (config) {
-        toggleSidebar(false);
-        openCreatorModal(config);
-        // No need to close sidebar here
-    } else {
-        showNotification("Could not load GPT data for editing.", "error");
->>>>>>> 1995db9131fb11839e73ea1284eaf1999013ead1
     }
-    // Removed erroneous else block that was here
 }
 
 /**
@@ -659,7 +647,7 @@ export function initializeSidebar() {
 }
 
 // Export necessary functions
-export { toggleSidebar }; // renderCustomGptList already exported
+export { toggleSidebar, handleNewChat, renderChatList };
 
 // Track selected GPT ID globally
 window.selectedGptId = null;

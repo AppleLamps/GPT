@@ -1,0 +1,68 @@
+/* Existing styles in style.css (if any) */
+
+/* ===== Header ===== */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-primary);
+    background-color: var(--background-primary);
+    position: sticky;
+    top: 0;
+    z-index: 10; /* Keep header above content */
+}
+
+.header-left,
+.header-center,
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Consistent gap */
+}
+
+.header-left {
+    flex-shrink: 0;
+    /* Prevents shrinking on smaller screens */
+}
+
+.header-center {
+    flex-grow: 1;
+    justify-content: center;
+    min-width: 0; /* Allows center content to shrink if needed */
+}
+
+.header-right {
+    flex-shrink: 0;
+    justify-content: flex-end;
+}
+
+/* Update icon button styles if necessary */
+.icon-button {
+    background: none;
+    border: none;
+    padding: 6px;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--text-secondary);
+    display: inline-flex; /* Aligns SVG nicely */
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.icon-button:hover {
+    background-color: var(--background-secondary);
+    color: var(--text-primary);
+}
+
+#modelSelector {
+    /* Existing styles... */
+    max-width: 200px; /* Adjust as needed */
+}
+
+.active-gpt-display {
+    /* Existing styles... */
+    margin-left: 5px; /* Space from model selector */
+    /* ... other styles */
+} 

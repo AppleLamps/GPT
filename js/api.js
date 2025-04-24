@@ -5,7 +5,7 @@
 // MODIFIED: fetchGrokCompletions now streams reasoning content live.
 import * as state from './state.js';
 // Use new functions from messageList for appending/finalizing
-import { showTypingIndicator, removeTypingIndicator, createAIMessageContainer, appendAIMessageContent, finalizeAIMessageContent, setupMessageActions } from './components/messageList.js';
+import { showTypingIndicator, removeTypingIndicator, createAIMessageContainer, appendAIMessageContent, finalizeAIMessageContent, setupMessageActions, showChatInterface } from './components/messageList.js';
 import { showNotification } from './notificationHelper.js';
 // Use new functions from parser
 import { resetParser, accumulateChunkAndGetEscaped, parseFinalHtml, getAccumulatedRawText } from './parser.js';
@@ -14,8 +14,8 @@ import { escapeHTML } from './utils.js';
 import { fetchGeminiStream, buildGeminiPayloadContents, buildGeminiSystemInstruction, buildGeminiGenerationConfig } from './geminiapi.js';
 // Import the new rendering function
 import { renderImprovedWebSearchResults } from './components/webSearch.js';
-// Import OpenAI client
-import OpenAI from 'https://cdn.skypack.dev/openai@4.24.1';
+// Import Supabase client
+import { supabase } from './supabaseClient.js';
 // Import marked for Grok reasoning parsing
 import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
 
@@ -27,12 +27,14 @@ const TTS_API_URL = 'https://api.openai.com/v1/audio/speech';
 const IMAGE_GENERATION_API_URL = 'https://api.openai.com/v1/images/generations';
 const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
 
-// Initialize OpenAI client
+// Initialize OpenAI client - NO LONGER NEEDED HERE FOR IMAGE GEN
+/*
 function getOpenAIClient() {
     const apiKey = state.getApiKey();
     if (!apiKey) return null;
     return new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
 }
+*/
 
 // --- API Routing ---
 
@@ -113,56 +115,132 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
     }
 
     // Check for image generation mode first
-    if (isImageGenMode && finalModel === 'gpt-4o-latest') {
-        console.log("Routing to DALL-E 3 for image generation");
-        
-        // Check for OpenAI API key only when needed for image generation
-        const apiKey = state.getApiKey();
-        if (!apiKey) {
-            showNotification("Error: OpenAI API key is required for image generation. Please add it in Settings.", 'error');
+    if (isImageGenMode) {
+        console.log(`Routing to Supabase Edge Function 'generate-image'`);
+
+        // Check if Supabase client is available (it should be)
+        if (!supabase) {
+             console.error("Supabase client is not available. Cannot call Edge Function.");
+             showNotification("Error: Supabase client not initialized. Cannot generate image.", 'error');
+             return;
+        }
+
+        // Clear previous image URL state immediately
+        state.clearLastGeneratedImageUrl();
+        const aiMessageElement = createAIMessageContainer(); // Create container
+        if (!aiMessageElement) {
+            console.error("Failed to create AI message container for placeholder.");
+            showNotification("Error displaying image placeholder.", 'error');
             return;
         }
-        
-        const result = await fetchImageGeneration(apiKey, lastUserMessageContent);
-        if (result) {
-            console.log("Attempting to create container for generated image...");
-            const aiMessageElement = createAIMessageContainer();
-            if (aiMessageElement) {
-                console.log("Image container created. Populating content...");
-                let content = `<img src="${result.imageUrl}" alt="Generated image" style="max-width: 100%; border-radius: 6px; display: block; margin-top: 8px;">`;
-                if (result.revisedPrompt) {
-                    content = `<p>Revised prompt: <em>${escapeHTML(result.revisedPrompt)}</em></p>` + content;
-                }
-                // Using finalize directly since it's not streaming
-                finalizeAIMessageContent(aiMessageElement, content);
-                console.log("Image content finalized.");
 
-                // Setup actions with isImageMessage flag
-                setupMessageActions(aiMessageElement, result.imageUrl, true);
+        // <<< ADD PLACEHOLDER CLASS >>>
+        aiMessageElement.classList.add('image-placeholder');
+        showChatInterface(); // <<< ENSURE CHAT IS VISIBLE >>>
+
+        // <<< REMOVE OLD PLACEHOLDER LOGIC (Commented out or deleted) >>>
+        /*
+        // Add placeholder HTML immediately - NO LONGER NEEDED
+        const placeholderHtml = '<div class="image-loading-placeholder"></div>';
+        const contentElement = aiMessageElement.querySelector('.ai-message-content');
+        if (contentElement) {
+            contentElement.innerHTML = placeholderHtml;
+        } else {
+            console.error("Could not find content element to insert placeholder.");
+        }
+        */
+        // No typing indicator needed, placeholder serves this purpose
+        // showTypingIndicator(aiMessageElement);
+
+        try {
+            // Call the Supabase Edge Function
+            const { data, error } = await supabase.functions.invoke('generate-image', {
+                body: { prompt: lastUserMessageContent } // Pass prompt in the body
+            });
+
+            // <<< REMOVE PLACEHOLDER CLASS >>>
+            if (aiMessageElement) aiMessageElement.classList.remove('image-placeholder');
+
+            // Handle errors returned directly by the invoke call (network, function setup errors)
+            if (error) {
+                console.error("Error invoking Supabase function 'generate-image':", error);
+                throw new Error(error.message || "Unknown error invoking Supabase function.");
+            }
+
+            // Handle errors returned *within* the function's JSON response
+            if (data && data.error) {
+                console.error("Error returned from Supabase function 'generate-image':", data.error);
+                throw new Error(data.error); // Use the error message from the function
+            }
+
+            // Handle successful response with base64 image data
+            if (data && data.b64_json) { // <<< CHANGED: Check for b64_json
+                // <<< CHANGED: Construct data URL from base64 string >>>
+                const imageUrl = `data:image/png;base64,${data.b64_json}`;
+                const revisedPrompt = data.revised_prompt; // Get revised prompt
+
+                console.log("Image generated successfully via Supabase function (Base64).");
+
+                // Construct final content
+                let finalContent = `<img src="${imageUrl}" alt="Generated image" style="max-width: 100%; border-radius: 6px; display: block; margin-top: 8px;">`;
+                // Optional: Still display revised prompt if desired, just don't save it
+                // if (revisedPrompt) {
+                //     finalContent = `<p>Revised prompt: <em>${escapeHTML(revisedPrompt)}</em></p>` + finalContent;
+                // }
+
+
+                // Finalize the content (this will replace the placeholder)
+                finalizeAIMessageContent(aiMessageElement, finalContent, false); // Pass false for markdown processing
+                console.log("Image content finalized, replacing placeholder.");
+
+                // Setup actions with the image URL (base64 data URL works here)
+                setupMessageActions(aiMessageElement, imageUrl, true);
                 console.log("Image actions set up.");
 
-                // Add to history with imageUrl
+                // Add to history with the image URL
                 console.log("Adding image message to history...");
+                // <<< MODIFY HISTORY SAVING HERE >>>
                 state.addMessageToHistory({
                     role: 'assistant',
-                    content: result.revisedPrompt ? `Revised prompt: ${result.revisedPrompt}` : '[Generated Image]',
-                    imageUrl: result.imageUrl
+                    content: '[Generated Image]', // <<< CHANGED
+                    imageUrl: imageUrl // Store the actual image data URL
                 });
                 console.log("Image message added to history.");
 
-                // Store URL for next turn
-                state.setLastGeneratedImageUrl(result.imageUrl);
-
             } else {
-                console.error("Failed to create AI message container for the image!");
-                showNotification("Failed to display generated image.", "error");
-                state.clearLastGeneratedImageUrl(); // Clear if UI fails
+                // Handle cases where the function executed but didn't return expected data
+                console.error("Invalid response structure from Supabase function 'generate-image' (missing b64_json or error?):", data);
+                 throw new Error("Function returned invalid data structure.");
             }
-        } else {
-            console.log("Image generation call returned null, skipping UI update.");
-            state.clearLastGeneratedImageUrl(); // Clear if API fails
+
+        } catch (error) { // Catches errors thrown above (invoke, data.error, missing data)
+            // <<< REMOVE PLACEHOLDER CLASS (already done before checks, but ensure if error happens earlier) >>>
+            if (aiMessageElement && aiMessageElement.classList.contains('image-placeholder')) {
+                 aiMessageElement.classList.remove('image-placeholder');
+            }
+
+            // Catch network errors calling the function or errors thrown above
+            console.error("Error during Supabase function call or processing:", error);
+            const errorHtml = `<p class="error-message">Error generating image: ${escapeHTML(error.message || 'Unknown error')}</p>`;
+            // Finalize with error message (this replaces the placeholder)
+            // Ensure aiMessageElement exists before finalizing
+            if (aiMessageElement) {
+                finalizeAIMessageContent(aiMessageElement, errorHtml, false); // Pass false for markdown
+            } else {
+                 // If the container wasn't even created, maybe show a notification?
+                 console.error("Cannot display error in chat, AI message container does not exist.");
+            }
+
+
+            // No need for removeTypingIndicator call (handled by placeholder logic)
+            showNotification(`Error generating image: ${error.message || 'Please check console for details.'}`, 'error');
+             // Add error message to history
+             state.addMessageToHistory({
+                role: 'assistant',
+                content: `[Error generating image: ${error.message || 'Unknown error'}]`
+            });
         }
-        return;
+        return; // Stop further processing after handling image generation
     }
 
     // --- API Routing for chat/responses ---
@@ -313,72 +391,6 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
     } else {
         console.error(`Effective model "${finalModel}" routing not implemented.`);
         showNotification(`Model "${finalModel}" routing not implemented.`, 'error');
-    }
-}
-
-/**
- * Fetches an image from DALL-E 3.
- * @param {string} apiKey
- * @param {string} prompt
- * @returns {Promise<{imageUrl: string, revisedPrompt: string | null} | null>}
- */
-async function fetchImageGeneration(apiKey, prompt) {
-    console.log("Calling DALL-E 3 for prompt:", prompt);
-    const requestBody = {
-        model: "dall-e-3",
-        prompt: prompt,
-        n: 1,
-        size: "1024x1024", // Or make configurable later
-        quality: "standard", // Or "hd"
-        response_format: "url", // Easier for direct display
-    };
-
-    try {
-        showTypingIndicator("Generating image...");
-        const response = await fetch(IMAGE_GENERATION_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify(requestBody)
-        });
-
-        removeTypingIndicator();
-
-        if (!response.ok) {
-            let errorMsg = `DALL-E Error: ${response.status}`;
-            try {
-                const errorData = await response.json();
-                errorMsg = errorData.error?.message || errorMsg;
-                console.error("DALL-E API Error:", errorData);
-            } catch (e) { console.error("Failed to parse DALL-E error response:", e); }
-            if (response.status === 401) errorMsg = "Authentication Error: Invalid API Key for DALL-E.";
-            if (response.status === 429) errorMsg = "Rate Limit Exceeded for DALL-E.";
-            if (response.status === 400) { // Often content policy violation
-                errorMsg = `Invalid Request for DALL-E (Check prompt/content policy): ${errorMsg}`;
-            }
-            showNotification(errorMsg, 'error', 7000);
-            return null;
-        }
-
-        const result = await response.json();
-        if (result.data && result.data.length > 0 && result.data[0].url) {
-            console.log("DALL-E Generation Successful:", result.data[0].url);
-            return {
-                imageUrl: result.data[0].url,
-                revisedPrompt: result.data[0].revised_prompt || null
-            };
-        } else {
-            console.error("DALL-E response missing expected data:", result);
-            showNotification("Received unexpected response from DALL-E.", "error");
-            return null;
-        }
-    } catch (error) {
-        removeTypingIndicator();
-        console.error('Network or other error during DALL-E API call:', error);
-        showNotification(`Failed to generate image: ${error.message}`, 'error');
-        return null;
     }
 }
 
