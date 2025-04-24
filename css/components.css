@@ -633,36 +633,44 @@ body.dark-mode .ai-message-content code:not(pre code) { /* Dark mode adjustment 
 
 .example-prompts {
     display: grid;
-    /* Changed from flex */
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    /* Responsive grid */
-    gap: 16px;
-    /* Increased gap */
+    /* Adjust grid for 3 items, allowing flexibility */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+    gap: 18px; /* Slightly increased gap */
     width: 100%;
-    max-width: 900px;
-    /* Limit width */
-    margin-top: 2rem;
-    /* Added from later rule */
+    max-width: 900px; 
+    margin-top: 2rem; 
+    padding: 0 10px; /* Add padding for smaller screens */
 }
 
 .example-prompt {
-    padding: 16px;
-    /* Increased padding */
+    position: relative; /* Needed for pseudo-element positioning */
+    padding: 18px 18px 18px 45px; /* Increased padding, make space for icon */
     background-color: var(--background-secondary);
     border: 1px solid var(--border-primary);
-    border-radius: 12px;
-    /* Increased radius */
+    border-radius: 10px; /* Slightly softer radius */
     text-align: left;
     cursor: pointer;
     color: var(--text-primary);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    /* Added from later rule */
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    font-size: 0.95em; /* Slightly adjust font size */
+}
+
+/* Add a simple icon */
+.example-prompt::before {
+    content: '💡'; /* Example icon, could use SVG */
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2em;
+    opacity: 0.7;
 }
 
 .example-prompt:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.08);
+    border-color: var(--accent-color);
 }
 
 /* Settings Modal Components */
@@ -2339,11 +2347,12 @@ body.dark-mode .example-prompt {
     background-color: var(--dark-background-secondary);
     border-color: var(--dark-border-primary);
     color: var(--dark-text-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15); /* Dark mode shadow */
 }
 
 body.dark-mode .example-prompt:hover {
-    background-color: var(--dark-background-tertiary);
-    border-color: var(--dark-border-secondary);
+    border-color: var(--dark-accent-color);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2); /* Dark mode hover shadow */
 }
 
 /* Settings modal dark mode */
