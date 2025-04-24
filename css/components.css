@@ -306,9 +306,14 @@ body.dark-mode .ai-message-content code:not(pre code) { /* Dark mode adjustment 
 /* Input Container for better layout */
 .input-container {
     position: relative;
-    padding: 0.5rem 0.75rem;
+    /* padding: 0.5rem 0.75rem; */ /* Original padding */
+    padding: 0.5rem 3rem; /* Increased horizontal padding for desktop */
     box-sizing: border-box;
     margin-bottom: 2px;
+    /* You could also use max-width and margin: auto if preferred */
+    /* max-width: 900px; */ 
+    /* margin-left: auto; */
+    /* margin-right: auto; */
 }
 
 /* Adjust spacing for the input area */
@@ -869,53 +874,96 @@ body.dark-mode .notification {
 .header-model-selector {
     display: flex;
     align-items: center;
-    /* Removed absolute positioning to work with flexbox layout */
 }
 
+/* Enhanced Header Model Selector Dropdown */
 .header-model-select {
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    background-color: transparent;
-    border: none;
-    padding: 4px 20px 4px 4px;
+    background-color: var(--background-secondary); /* Subtle background */
+    border: 1px solid var(--border-primary);
+    border-radius: 18px; /* Rounded corners */
+    padding: 6px 30px 6px 15px; /* Adjusted padding: Top/Bottom, Right (for arrow), Left */
     margin: 0;
     font-family: inherit;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 16px; /* Slightly smaller for better fit */
+    font-weight: 500; /* Less bold */
     color: var(--text-primary);
     cursor: pointer;
     outline: none;
     width: auto;
-    text-align: center;
+    min-width: 150px; /* Ensure minimum width */
+    text-align: center; /* Center selected text */
     position: relative;
-}
+    transition: border-color 0.2s ease, background-color 0.2s ease;
 
-/* Ensure text remains centered even with the dropdown arrow */
-.header-model-select option {
-    text-align: left;
-}
-
-.header-model-select::after {
-    content: '>';
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
-    color: var(--text-muted);
-    font-size: 16px;
-    margin-left: 5px;
+    /* Custom dropdown arrow - using encoded SVG with hardcoded default color */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236c757d%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+    background-repeat: no-repeat;
+    background-position: right 10px top 50%;
+    background-size: 10px auto;
 }
 
 .header-model-select:hover {
-    color: #000;
-    /* Consider using a variable */
+    border-color: var(--border-secondary);
+    background-color: var(--background-tertiary);
 }
 
+.header-model-select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-color-light); /* Focus ring */
+}
+
+/* Style the options */
 .header-model-select option {
     background-color: var(--background-primary);
     color: var(--text-primary);
+    padding: 8px 15px; /* Add padding to options */
+    /* text-align: center; */ /* Centering options is unreliable across browsers */
+}
+
+/* Style optgroup labels */
+.header-model-select optgroup {
+    font-weight: bold;
+    font-style: italic;
+    color: var(--text-muted);
+    background-color: var(--background-secondary);
+    padding: 5px 10px;
+}
+
+/* Dark mode adjustments */
+body.dark-mode .header-model-select {
+    background-color: var(--dark-background-secondary);
+    border-color: var(--dark-border-primary);
+    color: var(--dark-text-primary);
+    /* Update arrow color for dark mode - using encoded SVG with hardcoded default dark color */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23adb5bd%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+}
+
+body.dark-mode .header-model-select:hover {
+    border-color: var(--dark-border-secondary);
+    background-color: var(--dark-background-tertiary);
+}
+
+body.dark-mode .header-model-select:focus {
+    border-color: var(--dark-accent-color);
+    box-shadow: 0 0 0 2px var(--dark-accent-color-light);
+}
+
+body.dark-mode .header-model-select option {
+    background-color: var(--dark-background-primary);
+    color: var(--dark-text-primary);
+}
+
+body.dark-mode .header-model-select optgroup {
+    color: var(--dark-text-muted);
+    background-color: var(--dark-background-secondary);
+}
+
+/* Remove the old ::after rule if it exists */
+.header-model-select::after {
+    content: none;
 }
 
 /* Custom GPT display styling */
@@ -984,6 +1032,154 @@ body.dark-mode .notification {
 /* Hidden by default */
 
 @media (max-width: 600px) {
+    .input-container .bottom-toolbar {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 5px);
+        left: 10px;
+        background-color: var(--background-primary);
+        border: 1px solid var(--border-primary);
+        border-radius: 18px;
+        padding: 4px 6px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+    }
+
+    .input-container .bottom-toolbar.mobile-visible {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* Center icons */
+    }
+
+    #mobileOptionsToggleBtn {
+        display: flex;
+        position: relative;
+        margin-right: 4px;
+        z-index: 6;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: var(--background-tertiary);
+        border: 1px solid var(--border-primary);
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: var(--text-primary);
+        flex-shrink: 0;
+    }
+
+    #mobileOptionsToggleBtn:hover {
+        background-color: #e0e0e0;
+    }
+
+    #mobileOptionsToggleBtn svg {
+        stroke: currentColor;
+    }
+
+    .input-container .input-box {
+        padding: 8px 12px;
+        min-height: 36px;
+        flex-grow: 1;
+    }
+
+    .input-container .send-button {
+        position: relative;
+        margin-left: 4px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .input-container {
+        /* Height auto is already set in layout.css */
+        box-sizing: border-box;
+        z-index: 5;
+    }
+
+    .input-container .bottom-toolbar.mobile-visible .tool-button {
+        font-size: 0;
+        padding: 6px;
+        min-width: 32px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 2px;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        transition: transform 0.2s ease, color 0.2s ease;
+    }
+
+    .input-container .bottom-toolbar.mobile-visible .tool-button:hover,
+    .input-container .bottom-toolbar.mobile-visible .tool-button:active {
+        color: var(--accent-color);
+        transform: scale(1.1);
+        background: none;
+    }
+
+    .input-container .bottom-toolbar.mobile-visible .tool-button svg {
+        margin: 0;
+        width: 22px;
+        height: 22px;
+        stroke-width: 2px;
+        stroke: currentColor;
+    }
+
+    /* Tooltips (optional) */
+    .input-container .bottom-toolbar.mobile-visible .tool-button::after {
+        content: attr(title);
+        position: absolute;
+        bottom: -24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 3px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+    }
+
+    .input-container .bottom-toolbar.mobile-visible .tool-button:hover::after {
+        opacity: 0;
+    }
+
+    /* Hide by default */
+    /* Hide less-used buttons */
+    .input-container .bottom-toolbar.mobile-visible #researchButton,
+    .input-container .bottom-toolbar.mobile-visible #voiceButton,
+    .input-container .bottom-toolbar.mobile-visible #modelButton {
+        display: none;
+    }
+
+    .bottom-toolbar {
+        margin-top: 6px;
+    }
+
+    /* Adjust chat container bottom padding if needed (handled mostly by layout.css dvh) */
+    .chat-container {
+        padding-bottom: 5px;
+    }
+
+    .message-container:last-child {
+        padding-bottom: 10px;
+    }
+
+    /* ADDED: Ensure input container has appropriate padding on mobile */
+    .input-container {
+        padding: 0.5rem 1rem; /* Keep smaller padding on mobile */
+        z-index: 5;
+        /* box-sizing: border-box; is already defined outside */
+    }
+
     .input-container .bottom-toolbar {
         display: none;
         position: absolute;
