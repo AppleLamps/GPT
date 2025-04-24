@@ -2709,3 +2709,36 @@ body.dark-mode .toggle-input:checked + .toggle-label {
         gap: 4px; /* Further reduce space between buttons on small mobile screens */
     }
 }
+
+/* Add after other button styles, e.g., after .primary-button */
+
+.secondary-button {
+    padding: 8px 16px;
+    background: transparent;
+    color: var(--accent-color);
+    border: 1px solid var(--accent-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    text-align: center;
+}
+
+.secondary-button:hover {
+    background-color: var(--accent-color-light);
+    color: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+/* Dark Mode */
+body.dark-mode .secondary-button {
+    color: var(--dark-accent-color);
+    border-color: var(--dark-accent-color);
+}
+
+body.dark-mode .secondary-button:hover {
+    background-color: rgba(var(--dark-accent-color-rgb), 0.15);
+    color: var(--dark-accent-hover);
+    border-color: var(--dark-accent-hover);
+}
