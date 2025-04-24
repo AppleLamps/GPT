@@ -128,6 +128,7 @@ class SettingsModal {
     validateApiKey(input) {
         const container = input.closest('.api-key-input-container');
         const indicator = container.querySelector('.api-key-validation-indicator');
+        if (!indicator) return;
         
         // Basic validation - check if the key matches expected format
         const isValid = this.isValidApiKey(input.value, input.dataset.provider);
@@ -237,7 +238,7 @@ function updateUserInfoInSettings() {
     if (user) {
         userInfoSection.innerHTML = `
             <h3>Account</h3>
-            <div class="user-info">
+            <div class="user-info" style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                 <div class="user-email">Signed in as: <strong>${user.email}</strong></div>
                 <button id="logoutFromSettings" class="secondary-button">Sign Out</button>
             </div>
@@ -257,9 +258,9 @@ function updateUserInfoInSettings() {
     } else {
         userInfoSection.innerHTML = `
             <h3>Account</h3>
-            <div class="user-info">
+            <div class="user-info" style="margin-top: 8px;">
                 <div class="not-signed-in">Not signed in</div>
-                <p>Sign in to sync your settings, chats, and custom GPTs across devices.</p>
+                <p style="margin-top: 4px; margin-bottom: 12px;">Sign in to sync your settings, chats, and custom GPTs across devices.</p>
                 <button id="loginFromSettings" class="primary-button">Sign In</button>
             </div>
         `;

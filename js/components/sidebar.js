@@ -187,15 +187,25 @@ async function handleDeleteChat(chatId) {
 /**
  * Renders the list of saved Custom GPTs in the sidebar.
  */
-export function renderCustomGptList() { // <<< EXPORTED
+export async function renderCustomGptList() { // <<< EXPORTED & ASYNC
     if (!customGptListContainer) {
         console.error("Custom GPT list container not found.");
         return;
     }
-    const configs = gptStore.getConfigList(); // Assumes sorted by name
-    customGptListContainer.innerHTML = ''; // Clear previous list
+    console.log("Rendering Custom GPT list..."); // Added log
+    try {
+        const configs = await gptStore.getConfigList(); // <<< AWAITING the list
+        console.log("Fetched configs for rendering:", configs); // Added log
 
-    // Add export/import buttons at the top
+        if (!Array.isArray(configs)) {
+            console.error("getConfigList did not return an array:", configs);
+            customGptListContainer.innerHTML = '<div style="padding: 10px; color: var(--text-secondary);">Error loading GPTs.</div>';
+            return;
+        }
+
+        customGptListContainer.innerHTML = ''; // Clear previous list
+
+        // Add export/import buttons at the top
     const actionButtons = document.createElement('div');
     actionButtons.className = 'gpt-action-buttons';
     actionButtons.style.cssText = 'display: flex; gap: 8px; padding: 0 8px 8px 8px;';
@@ -246,11 +256,14 @@ export function renderCustomGptList() { // <<< EXPORTED
         });
     });
 
-    if (configs.length === 0) {
-        return;
-    }
+        // Check if configs array is empty AFTER adding action buttons
+        if (configs.length === 0) {
+            console.log("No custom GPT configs found to render.");
+            // Optionally add a message like: customGptListContainer.innerHTML += '<div style="padding: 10px; color: var(--text-secondary);">No Custom GPTs saved yet.</div>';
+            return; // Exit after adding buttons if no configs
+        }
 
-    const activeGptId = state.getActiveCustomGptConfig()?.id;
+        const activeGptId = state.getActiveCustomGptConfig()?.id;
 
     configs.forEach(config => {
         const item = document.createElement('div');
@@ -281,18 +294,25 @@ export function renderCustomGptList() { // <<< EXPORTED
         `;
         customGptListContainer.appendChild(item);
     });
+
+    } catch (error) {
+        console.error("Error rendering Custom GPT list:", error);
+        customGptListContainer.innerHTML = '<div style="padding: 10px; color: var(--text-secondary);">Error loading GPTs.</div>'; // Show error in UI
+    }
 }
+
 
 /**
  * Handles clicking on a Custom GPT item to load it.
  * @param {string} gptId - The ID of the Custom GPT to load.
  */
-function handleLoadCustomGpt(gptId) {
+async function handleLoadCustomGpt(gptId) { // <<< ASYNC
     console.log(`Attempting to load Custom GPT: ${gptId}`);
-    const config = gptStore.loadConfig(gptId);
-    if (config) {
-        // Track selected GPT ID globally
-        window.selectedGptId = gptId;
+    try {
+        const config = await gptStore.loadConfig(gptId); // <<< AWAIT
+        if (config) {
+            // Track selected GPT ID globally
+            window.selectedGptId = gptId;
 
         // Save current chat before switching (if applicable)
         handleAutoSaveCurrentChat();
@@ -313,48 +333,72 @@ function handleLoadCustomGpt(gptId) {
         renderCustomGptList(); // Highlight active GPT
         renderChatList(); // Unhighlight any active chat
         toggleSidebar(false);
-        showNotification(`Switched to Custom GPT: ${config.name}`, 'success');
-    } else {
-        showNotification("Failed to load Custom GPT.", "error");
-        // Optionally clear active GPT state if load fails?
-        // state.clearActiveCustomGptConfig();
-        // updateActiveGptDisplay();
-        // renderCustomGptList();
+            await renderCustomGptList(); // Highlight active GPT <<< AWAIT
+            await renderChatList(); // Unhighlight any active chat <<< AWAIT
+            toggleSidebar(false);
+            showNotification(`Switched to Custom GPT: ${config.name}`, 'success');
+        } else {
+            showNotification("Failed to load Custom GPT.", "error");
+            // Optionally clear active GPT state if load fails?
+            // state.clearActiveCustomGptConfig();
+            // updateActiveGptDisplay();
+            // await renderCustomGptList(); // <<< AWAIT if uncommented
+        }
+    } catch (error) {
+        console.error("Error in handleLoadCustomGpt:", error);
+        showNotification("An error occurred while loading the Custom GPT.", "error");
     }
 }
+
 
 /**
  * Handles clicking the "Edit" button for a Custom GPT.
  * @param {string} gptId - The ID of the Custom GPT to edit.
  */
-function handleEditCustomGpt(gptId) {
+async function handleEditCustomGpt(gptId) { // <<< ASYNC
     console.log(`Attempting to edit Custom GPT: ${gptId}`);
-    const config = gptStore.loadConfig(gptId);
-    if (config) {
-        toggleSidebar(false);
-        openCreatorModal(config);
-        // No need to close sidebar here
-    } else {
-        showNotification("Could not load GPT data for editing.", "error");
+    try {
+        const config = await gptStore.loadConfig(gptId); // <<< AWAIT
+        if (config) {
+            toggleSidebar(false);
+            openCreatorModal(config);
+        } else {
+            showNotification("Could not load GPT data for editing.", "error");
+        }
+    } catch (error) {
+        console.error("Error loading GPT for edit:", error);
+        showNotification("Error loading GPT data for editing.", "error");
+        // No need to close sidebar here - Removed erroneous else block
     }
+    // Removed erroneous else block that was here
 }
 
 /**
  * Handles clicking the "Delete" button for a Custom GPT.
  * @param {string} gptId - The ID of the Custom GPT to delete.
  */
-function handleDeleteCustomGpt(gptId) {
-    const configList = gptStore.getConfigList();
-    const configToDelete = configList.find(c => c.id === gptId);
-    const nameToDelete = configToDelete ? `"${configToDelete.name}"` : `this Custom GPT (ID: ${gptId})`;
+async function handleDeleteCustomGpt(gptId) { // <<< ASYNC
+    let nameToDelete = `this Custom GPT (ID: ${gptId})`; // Default name
+    try {
+        // Try to get the name first for a better confirmation message
+        const configList = await gptStore.getConfigList(); // <<< AWAIT
+        const configToDelete = configList.find(c => c.id === gptId);
+        if (configToDelete) {
+            nameToDelete = `"${configToDelete.name}"`;
+        }
+    } catch (e) {
+        console.warn("Could not fetch config name for delete confirmation:", e);
+    }
 
-    showConfirmDialog(`Are you sure you want to delete ${nameToDelete}? This cannot be undone.`, 
-        () => {
-            const deleted = gptStore.deleteConfig(gptId);
-            if (deleted) {
-                showNotification('Custom GPT deleted.', 'success', 1500);
-                
-                // If the deleted GPT was the active one, clear state and UI
+
+    showConfirmDialog(`Are you sure you want to delete ${nameToDelete}? This cannot be undone.`,
+        async () => { // <<< ASYNC callback
+            try {
+                const deleted = await gptStore.deleteConfig(gptId); // <<< AWAIT
+                if (deleted) {
+                    showNotification('Custom GPT deleted.', 'success', 1500);
+
+                    // If the deleted GPT was the active one, clear state and UI
                 if (state.getActiveCustomGptConfig()?.id === gptId) {
                     state.clearActiveCustomGptConfig();
                     updateActiveGptDisplay(); 
@@ -362,12 +406,17 @@ function handleDeleteCustomGpt(gptId) {
                     showWelcomeInterface();
                     updateInputUIForModel();
                 }
-                renderCustomGptList();
+                await renderCustomGptList(); // <<< AWAIT
             } else {
-                showNotification('Failed to delete Custom GPT.', 'error');
+                // Error notification likely shown by gptStore/dataService
+                console.error(`Delete failed for GPT ID: ${gptId}`);
+                // showNotification('Failed to delete Custom GPT.', 'error'); // Maybe redundant
             }
+        } catch (error) {
+            console.error("Error during delete confirmation callback:", error);
+            showNotification('An error occurred while deleting the Custom GPT.', 'error');
         }
-    );
+    });
 }
 
 // --- General Sidebar Actions ---
@@ -535,10 +584,10 @@ export function initializeSidebar() {
     updateLogoutButton();
     
     // Listen for auth state changes
-    onAuthStateChange(() => {
+    onAuthStateChange(async () => { // <<< ASYNC callback
         updateLogoutButton();
-        renderChatList(); // Re-render chats for the new user
-        renderCustomGptList(); // Re-render custom GPTs for the new user
+        await renderChatList(); // Re-render chats for the new user <<< AWAIT
+        await renderCustomGptList(); // Re-render custom GPTs for the new user <<< AWAIT
     });
 
     // Event delegation for CHAT list
@@ -586,10 +635,13 @@ export function initializeSidebar() {
     logoutBtn?.addEventListener('click', handleLogout);
     clearConversationsBtn?.addEventListener('click', handleClearAllConversations);
 
-    // Initial list rendering
-    renderChatList();
-    renderCustomGptList();
-    
+    // Initial list rendering needs to be async now
+    const initialRender = async () => {
+        await renderChatList();
+        await renderCustomGptList();
+    };
+    initialRender(); // Call the async function
+
     // Load dark mode preference
     loadDarkModePreference();
 
