@@ -210,8 +210,11 @@ body.dark-mode .ai-message-content code:not(pre code) { /* Dark mode adjustment 
 
 .ai-message-actions {
     display: flex;
-    gap: 12px;
-    margin-top: 8px; /* Slightly increased margin after content */
+    gap: 15px; /* Increased desktop gap */
+    margin-top: 8px; 
+    /* Add padding to align with content */
+    padding-left: 1rem; /* Match .ai-message-content padding */
+    box-sizing: border-box; /* Include padding in width calculation */
 }
 
 .action-button {
@@ -222,7 +225,14 @@ body.dark-mode .ai-message-content code:not(pre code) { /* Dark mode adjustment 
     padding: 0;
     display: flex;
     align-items: center;
+    /* Remove margin */
+    /* margin-right: 8px; */ 
 }
+
+/* Remove rule for last child margin */
+/* .action-button:last-child {
+    margin-right: 0;
+} */
 
 .action-button svg {
     stroke: currentColor;
@@ -2681,7 +2691,8 @@ body.dark-mode .toggle-input:checked + .toggle-label {
 /* Mobile Adjustments */
 @media (max-width: 768px) {
     .ai-message-actions {
-        gap: 5px; /* Reduce space between buttons */
+        gap: 6px; /* Ensure mobile gap is smaller */
+        padding-left: 1rem; /* Maintain alignment on mobile */
     }
 }
 
@@ -2706,8 +2717,19 @@ body.dark-mode .toggle-input:checked + .toggle-label {
 
     /* Make buttons closer together on small screens */
     .ai-message-actions {
-        gap: 4px; /* Further reduce space between buttons on small mobile screens */
+        gap: 6px; /* Consistent small mobile gap */
+        padding-left: 1rem; /* Maintain alignment on small mobile */
     }
+
+    /* Remove mobile margin overrides */
+    /* .action-button {
+        margin-right: 6px; 
+    } */
+
+    /* Remove mobile margin overrides */
+    /* .action-button:last-child {
+        margin-right: 0;
+    } */
 }
 
 /* Add after other button styles, e.g., after .primary-button */
