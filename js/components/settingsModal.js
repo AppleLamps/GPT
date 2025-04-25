@@ -184,9 +184,9 @@ class SettingsModal {
         }
     }
 
-    open() {
+    async open() {
         // Load current settings
-        const currentSettings = state.loadSettings();
+        const currentSettings = await state.loadSettings();
         
         document.getElementById('apiKey').value = currentSettings.apiKey || '';
         document.getElementById('geminiApiKey').value = currentSettings.geminiApiKey || '';
@@ -276,8 +276,9 @@ function updateUserInfoInSettings() {
 /**
  * Loads the current GENERAL settings from state into the modal form fields.
  */
-function loadGeneralSettingsIntoForm() {
-    const currentSettings = state.loadSettings(); // Returns { apiKey, model, ttsInstructions, geminiApiKey, xaiApiKey }
+async function loadGeneralSettingsIntoForm() {
+    // Changed to await the Promise returned by loadSettings
+    const currentSettings = await state.loadSettings();
     
     // Handle both old and new input fields
     const apiKeyOld = document.getElementById('apiKey_old');
@@ -305,8 +306,8 @@ function loadGeneralSettingsIntoForm() {
  * Handles opening the settings modal.
  * <<< This is the correct, exported version >>>
  */
-export function openSettings() {
-    loadGeneralSettingsIntoForm(); // Load API Key, Default Model, TTS Instructions
+export async function openSettings() {
+    await loadGeneralSettingsIntoForm(); // Load API Key, Default Model, TTS Instructions
     updateUserInfoInSettings(); // Update user info section
 
     // Optional: Refresh Custom GPT state if applicable (though creator has its own modal)
@@ -359,8 +360,8 @@ function handleGeneralSettingsSave() {
 /**
  * Updates the settings form with current values from state.
  */
-function updateSettingsForm() {
-    const settings = state.loadSettings();
+async function updateSettingsForm() {
+    const settings = await state.loadSettings();
     
     if (apiKeyInput) apiKeyInput.value = settings.apiKey;
     if (modelSelect) modelSelect.value = settings.model;

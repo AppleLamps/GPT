@@ -1,338 +1,461 @@
 // ===== FILE: js/state.js =====
-// Manages the application's state
+/**
+ * Application state management with optimized memory usage and performance
+ * Uses immutable patterns for state access and memoization for performance
+ */
+import * as dataService from './dataService.js';
+import { showNotification } from './notificationHelper.js';
 
-// Import dataService functions at the top
-import * as dataService from './dataService.js'; // <-- Added import
-import { showNotification } from './notificationHelper.js'; // <-- Ensure this is imported if used in saveSettings error
-
-let chatHistory = [];
-let currentImage = null; // { data: base64string, name: filename }
-let currentUser = null; // Current logged-in user, populated by authService
-let settings = { // Default structure
-    apiKey: '',
-    model: 'gpt-4o',
-    ttsInstructions: '',
-    ttsVoice: 'alloy', // Load initial default from here
-    geminiApiKey: '',
-    xaiApiKey: '',
-    enableHtmlSandbox: false
+// Main state object organized by domains for better organization
+const state = {
+    chat: {
+        history: [],
+        activeChatId: null,
+        previousResponseId: null,
+        isWebSearchEnabled: false,
+        isImageGenerationMode: false,
+        isDeepResearchMode: false,
+        lastGeneratedImageUrl: null
+    },
+    message: {
+        currentImage: null,
+        attachedFiles: []
+    },
+    user: {
+        currentUser: null
+    },
+    settings: {
+        apiKey: '',
+        model: 'gpt-4o',
+        ttsInstructions: '',
+        ttsVoice: 'alloy',
+        geminiApiKey: '',
+        xaiApiKey: '',
+        enableHtmlSandbox: false
+    },
+    customGpt: {
+        configs: [],
+        activeConfig: null
+    }
 };
-let attachedFiles = []; // For per-message file uploads
-let isImageGenerationMode = false; // Track if image generation mode is active
-let lastGeneratedImageUrl = null; // Track the last generated image URL
-let isDeepResearchMode = false; // Track if deep research mode is active
 
-let isWebSearchEnabled = false; // Track if search is active for the next send
-let previousResponseId = null; // Track the ID of the last successful response (for Responses API)
-let activeChatId = null; // Track the ID of the chat loaded from storage
+// Cache for memoized values to improve performance
+const cache = {
+    lastHistoryCopy: null,
+    lastHistoryHash: '',
+    settingsLoaded: false
+};
 
-let customGptConfigs = []; // Array to hold loaded config metadata {id, name, description} for dropdowns
-let activeCustomGptConfig = null; // Holds the currently selected full config object or null for default behavior
+// --- Helper functions ---
 
-// --- Chat History ---
+/**
+ * Simple hashing function for history state to detect changes
+ * @param {Array} history - The chat history array
+ * @returns {string} A hash representing the chat history state
+ */
+function hashHistory(history) {
+    return history.length + '-' + 
+           (history.length > 0 ? 
+            history[history.length-1].role + 
+            history[history.length-1].content?.substring(0, 20) : '');
+}
+
+// --- Chat History Management ---
+
+/**
+ * Get a copy of the current chat history
+ * Uses memoization to avoid creating new objects when history hasn't changed
+ * @returns {Array} A copy of the chat history array
+ */
 export function getChatHistory() {
-    return [...chatHistory]; // Return a copy
+    const currentHash = hashHistory(state.chat.history);
+    
+    if (currentHash !== cache.lastHistoryHash || !cache.lastHistoryCopy) {
+        cache.lastHistoryCopy = [...state.chat.history]; 
+        cache.lastHistoryHash = currentHash;
+    }
+    
+    return cache.lastHistoryCopy;
 }
 
 /**
- * Adds a message to the chat history.
- * @param {{role: string, content: string, imageData?: string | null, attachedFilesMeta?: Array<{name: string, type: string}>}} message - The message object.
+ * Adds a message to the chat history
+ * @param {Object} message - The message object to add
  */
 export function addMessageToHistory(message) {
+    if (!message) return;
+    
     const messageToAdd = {
         ...message,
         imageData: message.imageData || null,
         attachedFilesMeta: message.attachedFilesMeta || null
     };
-    chatHistory.push(messageToAdd);
+    
+    state.chat.history.push(messageToAdd);
+    
+    // Invalidate cache
+    cache.lastHistoryHash = '';
+    cache.lastHistoryCopy = null;
 }
 
+/**
+ * Sets the active chat and resets related state
+ * @param {Array} history - The chat history to set
+ * @param {string|null} chatId - The ID of the chat
+ */
 export function setActiveChat(history, chatId = null) {
     console.log(`Setting active chat: ${chatId || 'New Chat'}`);
-    chatHistory = history ? [...history] : [];
-    activeChatId = chatId;
-    previousResponseId = null;
-    currentImage = null;
-    attachedFiles = [];
-    isWebSearchEnabled = false;
-    // UI updates handled separately
+    
+    // Reset all related state at once
+    state.chat.history = history ? [...history] : [];
+    state.chat.activeChatId = chatId;
+    state.chat.previousResponseId = null;
+    state.message.currentImage = null;
+    state.message.attachedFiles = [];
+    state.chat.isWebSearchEnabled = false;
+    
+    // Invalidate cache
+    cache.lastHistoryHash = '';
+    cache.lastHistoryCopy = null;
 }
 
+/**
+ * Clears the current chat session
+ */
 export function clearChatHistory() {
     console.log("Clearing active chat session state.");
     setActiveChat([], null);
     clearLastGeneratedImageUrl();
 }
 
+/**
+ * Removes the last assistant message from history
+ */
 export function removeLastAssistantMessageFromHistory() {
-    if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].role === "assistant") {
-        chatHistory.pop();
+    if (state.chat.history.length > 0 && 
+        state.chat.history[state.chat.history.length - 1].role === "assistant") {
+        
+        state.chat.history.pop();
+        
+        // Invalidate cache
+        cache.lastHistoryHash = '';
+        cache.lastHistoryCopy = null;
+        
         console.log("Removed last assistant message from history.");
     }
 }
 
+/**
+ * Gets the ID of the active chat
+ * @returns {string|null} The active chat ID
+ */
 export function getActiveChatId() {
-    return activeChatId;
+    return state.chat.activeChatId;
 }
 
-// --- Current Image (Per-message) ---
-export function getCurrentImage() { return currentImage; }
-export function setCurrentImage(imageData) { currentImage = imageData; }
-export function clearCurrentImage() { currentImage = null; }
+// --- Image and File Attachments ---
 
-// --- Attached Files (Per-message) ---
-export function getAttachedFiles() { return [...attachedFiles]; }
+export function getCurrentImage() { 
+    return state.message.currentImage; 
+}
+
+export function setCurrentImage(imageData) { 
+    state.message.currentImage = imageData; 
+}
+
+export function clearCurrentImage() { 
+    state.message.currentImage = null; 
+}
+
+export function getAttachedFiles() { 
+    return [...state.message.attachedFiles]; 
+}
+
 export function addAttachedFile(fileMeta) {
-    if (!attachedFiles.some(f => f.name === fileMeta.name)) {
-        attachedFiles.push({ ...fileMeta, content: null, processing: true, error: null });
+    if (!fileMeta || !fileMeta.name) return;
+    
+    if (!state.message.attachedFiles.some(f => f.name === fileMeta.name)) {
+        state.message.attachedFiles.push({ 
+            ...fileMeta, 
+            content: null, 
+            processing: true, 
+            error: null 
+        });
         console.log("Added file to state:", fileMeta.name);
-    } else { console.warn("Attempted to add duplicate file:", fileMeta.name); }
-}
-export function updateAttachedFileContent(fileName, content) {
-    const file = attachedFiles.find(f => f.name === fileName);
-    if (file) { file.content = content; file.processing = false; file.error = null; console.log("Updated content for file:", fileName); }
-}
-export function setAttachedFileError(fileName, errorMessage) {
-    const file = attachedFiles.find(f => f.name === fileName);
-    if (file) { file.content = null; file.processing = false; file.error = errorMessage; console.error("Error processing file:", fileName, errorMessage); }
-}
-export function removeAttachedFile(fileName) {
-    attachedFiles = attachedFiles.filter(f => f.name !== fileName); console.log("Removed file from state:", fileName);
-}
-export function clearAttachedFiles() {
-    if (attachedFiles.length > 0) { attachedFiles = []; console.log("Cleared all attached files from state."); }
+    } else {
+        console.warn("Attempted to add duplicate file:", fileMeta.name);
+    }
 }
 
-// --- User State ---
+export function updateAttachedFileContent(fileName, content) {
+    if (!fileName) return;
+    
+    const file = state.message.attachedFiles.find(f => f.name === fileName);
+    if (file) { 
+        file.content = content; 
+        file.processing = false; 
+        file.error = null;
+    }
+}
+
+export function setAttachedFileError(fileName, errorMessage) {
+    if (!fileName) return;
+    
+    const file = state.message.attachedFiles.find(f => f.name === fileName);
+    if (file) { 
+        file.content = null;
+        file.processing = false;
+        file.error = errorMessage;
+        console.error("Error processing file:", fileName, errorMessage);
+    }
+}
+
+export function removeAttachedFile(fileName) {
+    if (!fileName) return;
+    
+    const initialLength = state.message.attachedFiles.length;
+    state.message.attachedFiles = state.message.attachedFiles.filter(f => f.name !== fileName);
+    
+    if (state.message.attachedFiles.length < initialLength) {
+        console.log("Removed file from state:", fileName);
+    }
+}
+
+export function clearAttachedFiles() {
+    if (state.message.attachedFiles.length > 0) {
+        state.message.attachedFiles = [];
+        console.log("Cleared all attached files from state.");
+    }
+}
+
+// --- User Authentication State ---
+
 export function getCurrentUserState() {
-    return currentUser;
+    return state.user.currentUser;
 }
 
 export function setCurrentUserState(user) {
-    currentUser = user;
+    const wasLoggedIn = !!state.user.currentUser;
+    const isLoggingIn = !!user;
+    state.user.currentUser = user;
+    
     console.log("User state updated:", user ? user.email : "logged out");
-    // Reload settings when auth state changes to fetch/clear cloud settings
-    loadSettings().then(() => {
-        console.log("Settings potentially reloaded after auth state change.");
-        // Trigger immediate UI updates if necessary, e.g., re-render header/settings form
-        // import { updateHeaderModelSelect } from './components/header.js'; // Example
-        // updateHeaderModelSelect(settings.model); // Example
-    }).catch(error => {
-        console.error("Error reloading settings after auth change:", error);
-    });
+    
+    // Only reload settings if auth state actually changed
+    if (wasLoggedIn !== isLoggingIn) {
+        // Reset cache to force reload
+        cache.settingsLoaded = false;
+        
+        loadSettings().then(() => {
+            console.log("Settings reloaded after auth state change.");
+        }).catch(error => {
+            console.error("Error reloading settings after auth change:", error);
+        });
+    }
 }
 
-// --- General Settings ---
+// --- Settings Management ---
 
 /**
- * Loads settings, prioritizing Supabase for logged-in users, falling back to localStorage.
- * @returns {Promise<object>} A copy of the final settings state.
+ * Loads settings from localStorage and Supabase (if logged in)
+ * @returns {Promise<Object>} A copy of the settings
  */
-export async function loadSettings() { // <-- Made async
-    console.log("Attempting to load settings...");
-    // 1. Load defaults from localStorage as a fallback
-    let localApiKey = localStorage.getItem('openai_api_key') || '';
-    let localModel = localStorage.getItem('openai_model') || 'gpt-4o';
-    let localTtsInstructions = localStorage.getItem('openai_tts_instructions') || '';
-    let localTtsVoice = localStorage.getItem('openai_tts_voice') || 'alloy';
-    let localGeminiApiKey = localStorage.getItem('google_gemini_api_key') || '';
-    let localXaiApiKey = localStorage.getItem('xai_api_key') || '';
-    let localEnableHtmlSandbox = localStorage.getItem('enableHtmlSandbox') === 'true';
+export async function loadSettings() {
+    // If settings already loaded and no auth change, return cached
+    if (cache.settingsLoaded) {
+        return { ...state.settings };
+    }
+    
+    console.log("Loading settings...");
+    
+    // Load from localStorage first
+    state.settings.apiKey = localStorage.getItem('openai_api_key') || '';
+    state.settings.model = localStorage.getItem('openai_model') || 'gpt-4o';
+    state.settings.ttsInstructions = localStorage.getItem('openai_tts_instructions') || '';
+    state.settings.ttsVoice = localStorage.getItem('openai_tts_voice') || 'alloy';
+    state.settings.geminiApiKey = localStorage.getItem('google_gemini_api_key') || '';
+    state.settings.xaiApiKey = localStorage.getItem('xai_api_key') || '';
+    state.settings.enableHtmlSandbox = localStorage.getItem('enableHtmlSandbox') === 'true';
 
-    // Apply localStorage values initially to the settings object
-    settings = {
-        apiKey: localApiKey,
-        model: localModel,
-        ttsInstructions: localTtsInstructions,
-        ttsVoice: localTtsVoice,
-        geminiApiKey: localGeminiApiKey,
-        xaiApiKey: localXaiApiKey,
-        enableHtmlSandbox: localEnableHtmlSandbox
-    };
-    console.log("Initial settings from localStorage:", { ...settings });
-
-
-    // 2. If user is logged in, try to load from Supabase
-    if (currentUser) { // <-- Check the currentUser state variable
-        console.log(`User ${currentUser.email} logged in. Fetching settings from Supabase...`);
+    // If user is logged in, override with Supabase data
+    if (state.user.currentUser) {
         try {
             // Fetch both settings and API keys concurrently
             const [dbSettings, dbApiKeys] = await Promise.all([
-                dataService.getSettings(), // Fetches from dataService.js
-                dataService.getApiKeys()   // Fetches from dataService.js
+                dataService.getSettings(),
+                dataService.getApiKeys()
             ]);
 
-            console.log("Fetched DB Settings:", dbSettings);
-            console.log("Fetched DB API Keys:", dbApiKeys);
-
-            // 3. Merge Supabase data into the settings object, overwriting localStorage values
+            // Apply DB settings if available
             if (dbSettings && Object.keys(dbSettings).length > 0) {
-                // Use DB value if it exists, otherwise keep the value loaded from localStorage/default
-                settings.model = dbSettings.default_model || settings.model;
-                settings.ttsInstructions = dbSettings.tts_instructions !== null ? dbSettings.tts_instructions : settings.ttsInstructions; // Handle null from DB
-                settings.ttsVoice = dbSettings.tts_voice || settings.ttsVoice;
-                settings.enableHtmlSandbox = dbSettings.enable_html_sandbox !== undefined ? dbSettings.enable_html_sandbox : settings.enableHtmlSandbox;
+                if (dbSettings.default_model) state.settings.model = dbSettings.default_model;
+                if (dbSettings.tts_instructions !== null) state.settings.ttsInstructions = dbSettings.tts_instructions;
+                if (dbSettings.tts_voice) state.settings.ttsVoice = dbSettings.tts_voice;
+                if (dbSettings.enable_html_sandbox !== undefined) state.settings.enableHtmlSandbox = dbSettings.enable_html_sandbox;
             }
 
+            // Apply API keys if available
             if (dbApiKeys && dbApiKeys.length > 0) {
-                dbApiKeys.forEach(key => {
-                    // Use the key from DB ONLY if it's not empty/null
-                    if (key.encrypted_key) {
-                        if (key.provider === 'openai') {
-                            settings.apiKey = key.encrypted_key;
-                        } else if (key.provider === 'gemini') {
-                            settings.geminiApiKey = key.encrypted_key;
-                        } else if (key.provider === 'xai') {
-                            settings.xaiApiKey = key.encrypted_key;
-                        }
+                for (const key of dbApiKeys) {
+                    if (!key.encrypted_key) continue;
+                    
+                    switch(key.provider) {
+                        case 'openai': state.settings.apiKey = key.encrypted_key; break;
+                        case 'gemini': state.settings.geminiApiKey = key.encrypted_key; break;
+                        case 'xai': state.settings.xaiApiKey = key.encrypted_key; break;
                     }
-                });
+                }
             }
-            console.log("Settings after merging Supabase data:", { ...settings });
-
         } catch (error) {
-            console.error("Failed to load settings/keys from Supabase, using localStorage fallback:", error);
-            // Fallback to localStorage values already set if Supabase fetch fails
+            console.error("Failed to load settings from Supabase:", error);
+            // Continue with localStorage values
         }
-    } else {
-        console.log("No user logged in, using settings loaded from localStorage.");
     }
-
-    // Return a copy of the final settings state
-    return { ...settings };
+    
+    cache.settingsLoaded = true;
+    return { ...state.settings };
 }
 
-
+/**
+ * Saves settings to localStorage and Supabase (if logged in)
+ */
 export async function saveSettings(newApiKey, newModel, newTtsInstructions, newGeminiApiKey, newXaiApiKey, newTtsVoice, newEnableHtmlSandbox) {
-    // Update the internal state object
-    settings.apiKey = newApiKey;
-    settings.model = newModel;
-    settings.ttsInstructions = newTtsInstructions?.trim() ?? '';
-    settings.ttsVoice = newTtsVoice || 'alloy';
-    settings.geminiApiKey = newGeminiApiKey?.trim() ?? '';
-    settings.xaiApiKey = newXaiApiKey?.trim() ?? '';
-    settings.enableHtmlSandbox = newEnableHtmlSandbox === undefined ? false : newEnableHtmlSandbox;
+    // Update state
+    state.settings.apiKey = newApiKey || '';
+    state.settings.model = newModel || 'gpt-4o';
+    state.settings.ttsInstructions = newTtsInstructions?.trim() || '';
+    state.settings.ttsVoice = newTtsVoice || 'alloy';
+    state.settings.geminiApiKey = newGeminiApiKey?.trim() || '';
+    state.settings.xaiApiKey = newXaiApiKey?.trim() || '';
+    state.settings.enableHtmlSandbox = !!newEnableHtmlSandbox;
 
-    // Always save to localStorage as fallback
-    localStorage.setItem('openai_api_key', settings.apiKey);
-    localStorage.setItem('openai_model', settings.model);
-    localStorage.setItem('openai_tts_instructions', settings.ttsInstructions);
-    localStorage.setItem('openai_tts_voice', settings.ttsVoice);
-    localStorage.setItem('google_gemini_api_key', settings.geminiApiKey);
-    localStorage.setItem('xai_api_key', settings.xaiApiKey);
-    localStorage.setItem('enableHtmlSandbox', settings.enableHtmlSandbox.toString());
+    // Save to localStorage
+    localStorage.setItem('openai_api_key', state.settings.apiKey);
+    localStorage.setItem('openai_model', state.settings.model);
+    localStorage.setItem('openai_tts_instructions', state.settings.ttsInstructions);
+    localStorage.setItem('openai_tts_voice', state.settings.ttsVoice);
+    localStorage.setItem('google_gemini_api_key', state.settings.geminiApiKey);
+    localStorage.setItem('xai_api_key', state.settings.xaiApiKey);
+    localStorage.setItem('enableHtmlSandbox', state.settings.enableHtmlSandbox.toString());
 
-    // If user is logged in, save to Supabase too
-    if (currentUser) {
-        console.log("User logged in. Saving settings to Supabase...");
+    // Save to Supabase if logged in
+    if (state.user.currentUser) {
         try {
-            // dataService functions handle upserting
-            await dataService.saveApiKey('openai', settings.apiKey);
-            await dataService.saveApiKey('gemini', settings.geminiApiKey);
-            await dataService.saveApiKey('xai', settings.xaiApiKey);
-
-            await dataService.saveSettings({
-                model: settings.model,
-                ttsInstructions: settings.ttsInstructions,
-                ttsVoice: settings.ttsVoice,
-                enableHtmlSandbox: settings.enableHtmlSandbox
-            });
-
+            // Run saves in parallel for better performance
+            await Promise.all([
+                dataService.saveApiKey('openai', state.settings.apiKey),
+                dataService.saveApiKey('gemini', state.settings.geminiApiKey),
+                dataService.saveApiKey('xai', state.settings.xaiApiKey),
+                dataService.saveSettings({
+                    model: state.settings.model,
+                    ttsInstructions: state.settings.ttsInstructions,
+                    ttsVoice: state.settings.ttsVoice,
+                    enableHtmlSandbox: state.settings.enableHtmlSandbox
+                })
+            ]);
+            
             console.log("Settings successfully saved to Supabase.");
         } catch (error) {
             console.error("Error saving settings to Supabase:", error);
-            // Notify user about sync failure, data is still saved locally
             showNotification(`Failed to sync settings to cloud: ${error.message}`, 'error');
         }
-    } else {
-        console.log("No user logged in. Settings saved only to localStorage.");
     }
-
-    console.log("General Settings Saved (State & LocalStorage):", { ...settings });
 }
 
+// --- Settings Getters ---
+export function getApiKey() { return state.settings.apiKey; }
+export function getSelectedModelSetting() { return state.settings.model; }
+export function getTtsInstructions() { return state.settings.ttsInstructions; }
+export function getGeminiApiKey() { return state.settings.geminiApiKey; }
+export function getXaiApiKey() { return state.settings.xaiApiKey; }
+export function getTtsVoice() { return state.settings.ttsVoice; }
+export function getIsHtmlSandboxEnabled() { return state.settings.enableHtmlSandbox; }
 
-// --- Getters for settings ---
-export function getApiKey() { return settings.apiKey; }
-export function getSelectedModelSetting() { return settings.model; }
-export function getTtsInstructions() { return settings.ttsInstructions; }
-export function getGeminiApiKey() { return settings.geminiApiKey; }
-export function getXaiApiKey() { return settings.xaiApiKey; }
-export function getTtsVoice() { return settings.ttsVoice; }
-export function getIsHtmlSandboxEnabled() { return settings.enableHtmlSandbox; }
-
-// --- Web Search State (Per-message Toggle) ---
+// --- Web Search State ---
 export function toggleWebSearch() {
-    isWebSearchEnabled = !isWebSearchEnabled;
-    console.log("Web Search Toggled:", isWebSearchEnabled);
-    return isWebSearchEnabled;
+    state.chat.isWebSearchEnabled = !state.chat.isWebSearchEnabled;
+    console.log("Web Search Toggled:", state.chat.isWebSearchEnabled);
+    return state.chat.isWebSearchEnabled;
 }
-export function getIsWebSearchEnabled() { return isWebSearchEnabled; }
-export function setIsWebSearchEnabled(value) { isWebSearchEnabled = value; console.log("Web Search Set To:", isWebSearchEnabled); }
 
-// --- Responses API Conversation State ---
+export function getIsWebSearchEnabled() { 
+    return state.chat.isWebSearchEnabled; 
+}
+
+export function setIsWebSearchEnabled(value) { 
+    state.chat.isWebSearchEnabled = !!value;
+}
+
+// --- Response Continuity ---
 export function setPreviousResponseId(id) {
-    console.log("Setting Previous Response ID:", id);
-    previousResponseId = id;
+    state.chat.previousResponseId = id;
 }
-export function getPreviousResponseId() { return previousResponseId; }
 
-// --- Custom GPT Config State ---
+export function getPreviousResponseId() { 
+    return state.chat.previousResponseId; 
+}
+
+// --- Custom GPT Management ---
 export function getCustomGptConfigs() {
-    return [...customGptConfigs];
+    return [...state.customGpt.configs];
 }
+
 export function setCustomGptConfigs(configs) {
-    customGptConfigs = configs || [];
-    console.log("Custom GPT configs list updated:", customGptConfigs.length);
+    state.customGpt.configs = configs || [];
 }
+
 export function setActiveCustomGptConfig(config) {
-    activeCustomGptConfig = config ? { ...config } : null;
-    console.log("Active Custom GPT Config set to:", activeCustomGptConfig?.name || 'Default');
-    setPreviousResponseId(null); // Reset conversation context
+    state.customGpt.activeConfig = config ? { ...config } : null;
+    setPreviousResponseId(null); // Reset conversation context when changing GPTs
 }
+
 export function getActiveCustomGptConfig() {
-    return activeCustomGptConfig;
+    return state.customGpt.activeConfig;
 }
+
 export function clearActiveCustomGptConfig() {
-    if (activeCustomGptConfig) {
-        console.log("Clearing active Custom GPT config.");
+    if (state.customGpt.activeConfig) {
         setActiveCustomGptConfig(null);
     }
 }
 
-// --- Image Generation Mode State ---
-export function setImageGenerationMode(isActive) {
-    isImageGenerationMode = isActive;
-    console.log("Image Generation Mode:", isImageGenerationMode);
-}
-export function getIsImageGenerationMode() {
-    return isImageGenerationMode;
-}
+// --- Special Modes ---
 
-// --- Last Generated Image URL State ---
-export function setLastGeneratedImageUrl(url) {
-    lastGeneratedImageUrl = url;
-    console.log("Stored Last Generated Image URL:", lastGeneratedImageUrl ? "URL present" : "null");
-}
-export function getLastGeneratedImageUrl() {
-    return lastGeneratedImageUrl;
-}
-export function clearLastGeneratedImageUrl() {
-    if (lastGeneratedImageUrl) {
-        console.log("Clearing Last Generated Image URL.");
-        lastGeneratedImageUrl = null;
+export function setImageGenerationMode(isActive) {
+    state.chat.isImageGenerationMode = !!isActive;
+    
+    // Disable incompatible modes
+    if (state.chat.isImageGenerationMode) {
+        state.chat.isDeepResearchMode = false;
     }
 }
 
-// --- Deep Research Mode State ---
-export function getIsDeepResearchMode() {
-    return isDeepResearchMode;
+export function getIsImageGenerationMode() {
+    return state.chat.isImageGenerationMode;
 }
+
+export function setLastGeneratedImageUrl(url) {
+    state.chat.lastGeneratedImageUrl = url;
+}
+
+export function getLastGeneratedImageUrl() {
+    return state.chat.lastGeneratedImageUrl;
+}
+
+export function clearLastGeneratedImageUrl() {
+    state.chat.lastGeneratedImageUrl = null;
+}
+
+export function getIsDeepResearchMode() {
+    return state.chat.isDeepResearchMode;
+}
+
 export function setIsDeepResearchMode(isActive) {
-    isDeepResearchMode = !!isActive; // Ensure boolean
-    console.log("Deep Research Mode set to:", isDeepResearchMode);
-    if (isDeepResearchMode) {
-        setIsWebSearchEnabled(false);
-        setImageGenerationMode(false);
+    state.chat.isDeepResearchMode = !!isActive;
+    
+    // Disable incompatible modes
+    if (state.chat.isDeepResearchMode) {
+        state.chat.isWebSearchEnabled = false;
+        state.chat.isImageGenerationMode = false;
     }
 }

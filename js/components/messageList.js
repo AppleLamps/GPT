@@ -7,7 +7,6 @@ import * as utils from '../utils.js';
 import { showNotification } from '../notificationHelper.js';
 // <<< FIXED IMPORT: Use the new function names from parser.js >>>
 import { resetParser, parseFinalHtml, accumulateChunkAndGetEscaped } from '../parser.js';
-import { createSandbox } from './sandbox.js';
 
 // --- DOM Elements ---
 const chatContainerElement = document.getElementById('chatContainer');
@@ -168,7 +167,8 @@ export function finalizeAIMessageContent(aiMessageElement, finalHtmlContent) {
     if (contentDiv) {
         contentDiv.innerHTML = finalHtmlContent; // Replace content with final parsed HTML
 
-        // --- START: Add Sandbox Logic ---
+        // --- START: Remove Sandbox Logic ---
+        /* // Comment out the entire sandbox block
         if (state.getIsHtmlSandboxEnabled()) {
             // Define the language tag that triggers the sandbox
             const sandboxLanguageTag = 'html';
@@ -198,7 +198,8 @@ export function finalizeAIMessageContent(aiMessageElement, finalHtmlContent) {
                 });
             }
         }
-        // --- END: Add Sandbox Logic ---
+        */
+        // --- END: Remove Sandbox Logic ---
 
         contentDiv.classList.remove('streaming-content'); // Optional: remove streaming class
     } else {

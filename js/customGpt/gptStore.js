@@ -89,16 +89,19 @@ export async function saveConfig(config) {
     if (!config || !config.name || !config.name.trim()) {
         console.error("Attempted to save an invalid or unnamed config.");
         showNotification("Configuration must have a name.", "error");
-        showNotification("Configuration must have a name.", "error");
         return null;
     }
 
+    const configNameToSave = config.name.trim(); // Use trimmed name consistently
+
     // Use Supabase if logged in
     if (user) {
-        console.log(`Saving GPT config "${config.name.trim()}" to Supabase...`);
+        console.log(`Saving GPT config "${configNameToSave}" to Supabase...`);
         try {
             // dataService.saveCustomGpt handles ID generation/upsert
-            const savedMetadata = await dataService.saveCustomGpt(config);
+            // Ensure the config being sent has the trimmed name
+            const configForSupabase = { ...config, name: configNameToSave };
+            const savedMetadata = await dataService.saveCustomGpt(configForSupabase);
             if (savedMetadata) {
                 console.log(`Configuration "${savedMetadata.name}" (ID: ${savedMetadata.id}) saved successfully to Supabase.`);
                 showNotification(`Configuration "${savedMetadata.name}" saved.`, "success");
@@ -109,14 +112,14 @@ export async function saveConfig(config) {
             }
         } catch (error) {
             // Error already shown by dataService, just log and return null
-            console.error(`Error saving GPT config "${config.name.trim()}" to Supabase:`, error);
+            console.error(`Error saving GPT config "${configNameToSave}" to Supabase:`, error);
             return null;
         }
     } else {
         // Fallback to localStorage if not logged in
-        console.log(`Saving GPT config "${config.name.trim()}" to localStorage (not logged in).`);
+        console.log(`Saving GPT config "${configNameToSave}" to localStorage (not logged in).`);
         const configId = config.id || generateId('cfg'); // Generate ID if it's new
-        const configToSave = { ...config, id: configId, name: config.name.trim() };
+        const configToSave = { ...config, id: configId, name: configNameToSave }; // Use trimmed name
         const configKey = `${CONFIG_PREFIX}${configId}`;
 
         // --- Size Check for localStorage ---
@@ -134,10 +137,11 @@ export async function saveConfig(config) {
             localStorage.setItem(configKey, JSON.stringify(configToSave));
 
             // Update the localStorage config list metadata
-            const configList = await getConfigList(); // Fetch current list (will be from localStorage)
+            // Fetch current list (will be from localStorage as user is null)
+            const configList = await getConfigList();
             const configMetadata = {
                 id: configId,
-                name: configToSave.name,
+                name: configToSave.name, // Already trimmed
                 description: configToSave.description || ''
             };
 
@@ -163,7 +167,7 @@ export async function saveConfig(config) {
 
         } catch (error) {
             console.error(`Error saving GPT config "${configToSave.name}" to localStorage:`, error);
-            if (error.name === 'QuotaExceededError') {
+            if (error.name === 'QuotaExceededError' || (error.message && error.message.toLowerCase().includes('quota'))) {
                 showNotification(`Could not save "${configToSave.name}" locally. Storage limit exceeded. Try removing other configs or knowledge files.`, "error", 7000);
             } else {
                 showNotification(`Error saving configuration "${configToSave.name}" locally.`, "error");

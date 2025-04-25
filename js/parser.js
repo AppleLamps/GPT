@@ -1,93 +1,139 @@
 // ===== FILE: js/parser.js =====
-// MODIFIED: Separated accumulation and final parsing
+/**
+ * Optimized markdown parsing module 
+ * Uses lazy-loading of marked library and caching for performance
+ */
+import { escapeHTML } from './utils.js';
 
-// We'll use the 'marked' library. You need to include it in your HTML.
-// Example CDN: <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+// Cache for parsed content to avoid repeated parsing of the same content
+const parseCache = new Map();
+const MAX_CACHE_SIZE = 50; // Limit cache size to prevent memory issues
 
-import { escapeHTML } from './utils.js'; // <<< Import escapeHTML
-
-// Ensure marked is loaded before this script runs or handle potential errors.
-if (typeof marked === 'undefined') {
-    console.error("Marked library is not loaded. Please include it in your index.html");
-    // You might want to throw an error or disable functionality here
-}
-
-let accumulatedRawText = ''; // Store the raw text for history
+// Store accumulated content
+let accumulatedRawText = '';
 
 /**
- * <<< MODIFIED >>>
- * Appends a raw text chunk to the internal buffer and returns the *escaped* raw chunk.
- * Does NOT parse Markdown here.
- * @param {string} chunk - The raw text chunk received from the stream.
- * @returns {string} The raw, HTML-escaped text chunk that was just added. Returns empty string if chunk is empty.
+ * Reset parser state for a new message stream
+ */
+export function resetParser() {
+    accumulatedRawText = '';
+}
+
+/**
+ * Check if marked library is available and log error only once
+ */
+let markedWarningShown = false;
+function checkMarkedAvailability() {
+    if (typeof marked === 'undefined') {
+        if (!markedWarningShown) {
+            console.error("Marked library is not loaded. Falling back to plain text.");
+            markedWarningShown = true;
+        }
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Process incoming text chunk and return HTML-escaped version for immediate display
+ * @param {string} chunk - Raw text chunk from stream
+ * @returns {string} HTML-escaped chunk for display
  */
 export function accumulateChunkAndGetEscaped(chunk) {
-    if (chunk) {
-        accumulatedRawText += chunk;
-        // Return the escaped version of JUST the chunk for immediate display
-        return escapeHTML(chunk);
-    }
-    return '';
+    if (!chunk) return '';
+    
+    accumulatedRawText += chunk;
+    return escapeHTML(chunk);
 }
 
 /**
- * <<< NEW >>>
- * Parses the entire accumulated raw text using Marked.js.
- * @returns {string} The fully parsed HTML string.
- */
-export function parseFinalHtml() {
-    if (typeof marked === 'undefined') {
-        console.error("Marked library not available for final parsing.");
-        // Fallback: return escaped raw text
-        return escapeHTML(accumulatedRawText);
-    }
-    // Use marked to parse the *entire* accumulated text.
-    // Disable deprecated options for security/future-proofing
-    return marked.parse(accumulatedRawText, {
-        breaks: true, // Convert GFM line breaks to <br>
-        gfm: true,    // Enable GitHub Flavored Markdown
-        async: false  // Use synchronous parsing
-    });
-}
-
-/**
- * Parses a markdown string into HTML.
- * @param {string} markdownText - The markdown text to parse.
- * @returns {string} The parsed HTML.
- */
-export function parseMarkdownString(markdownText) {
-  if (typeof marked === 'undefined') {
-    console.error("Marked library not available for parsing.");
-    return escapeHTML(markdownText || ""); // Fallback
-  }
-  if (typeof markdownText !== 'string') {
-    return ""; // Return empty for non-string input
-  }
-  try {
-    // Use marked to parse the provided text.
-    return marked.parse(markdownText, {
-      breaks: true, // Convert GFM line breaks to <br>
-      gfm: true,    // Enable GitHub Flavored Markdown
-      async: false  // Use synchronous parsing
-    });
-  } catch (e) {
-    console.error("Error parsing markdown string:", e);
-    return escapeHTML(markdownText); // Fallback to escaped text on error
-  }
-}
-
-/**
- * Returns the total accumulated raw text.
- * @returns {string} The raw, unformatted text accumulated from all chunks.
+ * Get the complete raw accumulated text
+ * @returns {string} Raw accumulated text
  */
 export function getAccumulatedRawText() {
     return accumulatedRawText;
 }
 
+/**
+ * Parse the entire accumulated content with markdown
+ * Uses caching for performance optimization
+ * @returns {string} Fully parsed HTML
+ */
+export function parseFinalHtml() {
+    // Quick return for empty content
+    if (!accumulatedRawText) return '';
+    
+    // Check cache first to avoid re-parsing identical content
+    if (parseCache.has(accumulatedRawText)) {
+        return parseCache.get(accumulatedRawText);
+    }
+    
+    let result;
+    try {
+        if (checkMarkedAvailability()) {
+            // Use marked with optimized settings
+            result = marked.parse(accumulatedRawText, {
+                breaks: true,
+                gfm: true,
+                async: false,
+                silent: true // Don't throw on parse errors
+            });
+        } else {
+            // Fallback if marked isn't available
+            result = escapeHTML(accumulatedRawText);
+        }
+    } catch (error) {
+        console.error("Error during markdown parsing:", error);
+        result = escapeHTML(accumulatedRawText);
+    }
+    
+    // Cache the result for future use
+    if (parseCache.size >= MAX_CACHE_SIZE) {
+        // Remove oldest entry if cache is full
+        const firstKey = parseCache.keys().next().value;
+        parseCache.delete(firstKey);
+    }
+    parseCache.set(accumulatedRawText, result);
+    
+    return result;
+}
 
 /**
- * Resets the accumulated text for a new message stream.
+ * Parse arbitrary markdown text without affecting accumulation
+ * @param {string} markdownText - Text to parse
+ * @returns {string} Parsed HTML
  */
-export function resetParser() {
-    accumulatedRawText = '';
+export function parseMarkdownString(markdownText) {
+    if (!markdownText || typeof markdownText !== 'string') {
+        return '';
+    }
+    
+    // Check cache for this specific text
+    if (parseCache.has(markdownText)) {
+        return parseCache.get(markdownText);
+    }
+    
+    let result;
+    try {
+        if (checkMarkedAvailability()) {
+            result = marked.parse(markdownText, {
+                breaks: true,
+                gfm: true,
+                async: false,
+                silent: true
+            });
+        } else {
+            result = escapeHTML(markdownText);
+        }
+    } catch (error) {
+        console.error("Error parsing markdown string:", error);
+        result = escapeHTML(markdownText);
+    }
+    
+    // Only cache longer content to avoid cache bloat with small strings
+    if (markdownText.length > 100 && parseCache.size < MAX_CACHE_SIZE) {
+        parseCache.set(markdownText, result);
+    }
+    
+    return result;
 }

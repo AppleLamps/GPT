@@ -1,5 +1,5 @@
 {
-  "name": "Example Custom GPT",
+  "name": "Example Custom GPT Bot",
   "description": "A helpful assistant that specializes in coding tasks",
   "instructions": "You are a helpful coding assistant. You help users write clean, efficient code and solve programming problems.",
   "capabilities": {
