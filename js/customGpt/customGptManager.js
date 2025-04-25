@@ -25,10 +25,13 @@ export async function exportGpt(id) { // <<< Make async
         // Sanitize filename slightly: replace spaces and invalid characters
         const safeName = (gpt.name || "custom-gpt").replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
         a.download = `${safeName}.json`;
-        document.body.appendChild(a); // Append to body to ensure click works in all browsers
-        a.click();
-        document.body.removeChild(a); // Clean up link
-        URL.revokeObjectURL(url);
+        try {
+            document.body.appendChild(a); // Append to body to ensure click works in all browsers
+            a.click();
+        } finally {
+            document.body.removeChild(a); // Clean up link
+            URL.revokeObjectURL(url);
+        }
         showNotification(`GPT "${gpt.name}" exported successfully.`, "success");
 
     } catch (error) {
