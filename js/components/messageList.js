@@ -161,12 +161,22 @@ export function appendAIMessageContent(aiMessageElement, escapedChunk) {
  * <<< NEW >>> Replaces the content with the final parsed HTML and shows actions.
  * @param {HTMLElement} aiMessageElement - The container element for the AI message.
  * @param {string} finalHtmlContent - The fully parsed HTML content to set.
+ * @param {string | null} generatedImageUrl - URL of the generated image, if any.
  */
-export function finalizeAIMessageContent(aiMessageElement, finalHtmlContent) {
+export function finalizeAIMessageContent(aiMessageElement, finalHtmlContent, generatedImageUrl = null) {
     const contentDiv = aiMessageElement?.querySelector('.ai-message-content');
     const actionsDiv = aiMessageElement?.querySelector('.ai-message-actions');
     if (contentDiv) {
-        contentDiv.innerHTML = finalHtmlContent; // Replace content with final parsed HTML
+
+        let imageHtml = '';
+        if (generatedImageUrl) {
+            // Use similar class as user image for potential styling reuse
+            imageHtml = `<img src="${generatedImageUrl}" class="history-image generated-image" alt="AI Generated Image" style="max-width: 300px; margin-bottom: 10px; border-radius: 5px;">`;
+            // You might want specific styles for generated images
+        }
+
+        // Prepend the image HTML to the final content
+        contentDiv.innerHTML = imageHtml + finalHtmlContent; // Replace content with image (if any) + final parsed HTML
 
         // --- START: Add Sandbox Logic ---
         if (state.getIsHtmlSandboxEnabled()) {
@@ -431,7 +441,8 @@ export function renderMessagesFromHistory(history) {
             if (aiMessageElement) {
                 // For AI messages, we need to parse the content as it may contain markdown/code
                 const finalHtmlContent = parseFinalHtml(message.content);
-                finalizeAIMessageContent(aiMessageElement, finalHtmlContent);
+                // Pass the generatedImageUrl to finalizeAIMessageContent
+                finalizeAIMessageContent(aiMessageElement, finalHtmlContent, message.generatedImageUrl);
                 setupMessageActions(aiMessageElement, message.content);
             }
         }

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test OpenAI API Key</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test OpenAI API Key</h1>
+    
+    <div class="container">
+        <h2>1. Test Your API Key</h2>
+        <div class="input-group">
+            <label for="api-key">Enter your OpenAI API Key:</label>
+            <input type="text" id="api-key" placeholder="sk-...">
+        </div>
+        <button id="test-key">Test API Key</button>
+        <div id="test-result" style="margin-top: 15px;"></div>
+    </div>
+    
+    <div class="container">
+        <h2>2. Get Models List</h2>
+        <button id="get-models">Get Available Models</button>
+        <pre id="models-result"></pre>
+    </div>
+    
+    <div class="container">
+        <h2>3. Test Simple Completion</h2>
+        <div class="input-group">
+            <label for="prompt">Enter a prompt:</label>
+            <input type="text" id="prompt" value="Say hello world">
+        </div>
+        <button id="test-completion">Test Completion</button>
+        <pre id="completion-result"></pre>
+    </div>
+    
+    <div class="container">
+        <h2>4. Update API Key in Database</h2>
+        <div class="input-group">
+            <label for="new-api-key">New OpenAI API Key:</label>
+            <input type="text" id="new-api-key" placeholder="sk-...">
+        </div>
+        <button id="update-key">Update API Key</button>
+        <div id="update-result" style="margin-top: 15px;"></div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        // Initialize Supabase client
+        const supabaseUrl = 'https://keuxuonslkcvdeysdoge.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtldXh1b25zbGtjdmRleXNkb2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyNjc5MjUsImV4cCI6MjA2MDg0MzkyNX0.C1Bkoo9A3BlbfkHlUj7UdCmOPonMFftEFTOTHVQWIl4';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        
+        // Test API Key
+        document.getElementById('test-key').addEventListener('click', async () => {
+            const apiKey = document.getElementById('api-key').value.trim();
+            const resultElement = document.getElementById('test-result');
+            
+            if (!apiKey) {
+                resultElement.innerHTML = '<span class="error">Please enter an API key</span>';
+                return;
+            }
+            
+            resultElement.innerHTML = 'Testing API key...';
+            
+            try {
+                const response = await fetch('https://api.openai.com/v1/models', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultElement.innerHTML = `<span class="success">✅ API key is valid!</span>`;
+                    console.log('API key test successful:', data);
+                    
+                    // Auto-fill the new API key field
+                    document.getElementById('new-api-key').value = apiKey;
+                } else {
+                    resultElement.innerHTML = `<span class="error">❌ API key is invalid: ${data.error?.message || 'Unknown error'}</span>`;
+                    console.error('API key test failed:', data);
+                }
+            } catch (error) {
+                resultElement.innerHTML = `<span class="error">❌ Error testing API key: ${error.message}</span>`;
+                console.error('Error testing API key:', error);
+            }
+        });
+        
+        // Get Models
+        document.getElementById('get-models').addEventListener('click', async () => {
+            const apiKey = document.getElementById('api-key').value.trim();
+            const resultElement = document.getElementById('models-result');
+            
+            if (!apiKey) {
+                resultElement.textContent = 'Please enter an API key first';
+                return;
+            }
+            
+            resultElement.textContent = 'Loading models...';
+            
+            try {
+                const response = await fetch('https://api.openai.com/v1/models', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Sort models by ID
+                    const sortedModels = data.data.sort((a, b) => a.id.localeCompare(b.id));
+                    
+                    // Format the output
+                    const modelsList = sortedModels.map(model => `- ${model.id}`).join('\n');
+                    resultElement.textContent = `Available Models:\n${modelsList}`;
+                } else {
+                    resultElement.textContent = `Error: ${data.error?.message || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultElement.textContent = `Error: ${error.message}`;
+            }
+        });
+        
+        // Test Completion
+        document.getElementById('test-completion').addEventListener('click', async () => {
+            const apiKey = document.getElementById('api-key').value.trim();
+            const prompt = document.getElementById('prompt').value.trim();
+            const resultElement = document.getElementById('completion-result');
+            
+            if (!apiKey) {
+                resultElement.textContent = 'Please enter an API key first';
+                return;
+            }
+            
+            if (!prompt) {
+                resultElement.textContent = 'Please enter a prompt';
+                return;
+            }
+            
+            resultElement.textContent = 'Generating completion...';
+            
+            try {
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o',
+                        messages: [
+                            { role: 'user', content: prompt }
+                        ],
+                        max_tokens: 150
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultElement.textContent = `Response: ${data.choices[0].message.content}`;
+                } else {
+                    resultElement.textContent = `Error: ${data.error?.message || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultElement.textContent = `Error: ${error.message}`;
+            }
+        });
+        
+        // Update API Key in Database
+        document.getElementById('update-key').addEventListener('click', async () => {
+            const newApiKey = document.getElementById('new-api-key').value.trim();
+            const resultElement = document.getElementById('update-result');
+            
+            if (!newApiKey) {
+                resultElement.innerHTML = '<span class="error">Please enter a new API key</span>';
+                return;
+            }
+            
+            resultElement.innerHTML = 'Checking authentication...';
+            
+            try {
+                // Check if user is authenticated
+                const { data: { session }, error: authError } = await supabase.auth.getSession();
+                
+                if (authError) {
+                    throw authError;
+                }
+                
+                const user = session?.user;
+                if (!user) {
+                    resultElement.innerHTML = '<span class="error">You must be signed in to update your API key</span>';
+                    return;
+                }
+                
+                // Test the new API key first
+                const testResponse = await fetch('https://api.openai.com/v1/models', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${newApiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!testResponse.ok) {
+                    const testData = await testResponse.json();
+                    resultElement.innerHTML = `<span class="error">❌ Cannot update: The new API key is invalid: ${testData.error?.message || 'Unknown error'}</span>`;
+                    return;
+                }
+                
+                // Update the API key in the database
+                resultElement.innerHTML = 'Updating API key in database...';
+                
+                const { error: updateError } = await supabase
+                    .from('api_keys')
+                    .upsert({
+                        user_id: user.id,
+                        provider: 'openai',
+                        encrypted_key: newApiKey
+                    }, {
+                        onConflict: 'user_id,provider'
+                    });
+                
+                if (updateError) {
+                    throw updateError;
+                }
+                
+                // Also update in localStorage
+                localStorage.setItem('openai_api_key', newApiKey);
+                
+                resultElement.innerHTML = '<span class="success">✅ API key updated successfully in database and localStorage</span>';
+            } catch (error) {
+                resultElement.innerHTML = `<span class="error">❌ Error updating API key: ${error.message}</span>`;
+                console.error('Error updating API key:', error);
+            }
+        });
+        
+        // Initialize - Load API key from localStorage if available
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedApiKey = localStorage.getItem('openai_api_key');
+            if (savedApiKey) {
+                document.getElementById('api-key').value = savedApiKey;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -202,8 +202,8 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
                 // <<< MODIFY HISTORY SAVING HERE >>>
                 state.addMessageToHistory({
                     role: 'assistant',
-                    content: '[Generated Image]', // <<< CHANGED
-                    imageUrl: imageUrl // Store the actual image data URL
+                    content: '[Generated Image]', // Content can be minimal or indicate it's an image
+                    generatedImageUrl: imageUrl // <-- Use generatedImageUrl here
                 });
                 console.log("Image message added to history.");
 

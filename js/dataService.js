@@ -13,19 +13,19 @@ export async function saveApiKey(provider, apiKey) {
     try {
         const user = getCurrentUserState();
         if (!user) throw new Error('User not authenticated');
-        
+
         // In a production app, you'd encrypt this before sending to Supabase
         // For now, we'll just store it (not recommended for production)
         const { data, error } = await supabase
             .from('api_keys')
-            .upsert({ 
-                user_id: user.id, 
-                provider, 
-                encrypted_key: apiKey 
-            }, { 
-                onConflict: 'user_id, provider' 
+            .upsert({
+                user_id: user.id,
+                provider,
+                encrypted_key: apiKey
+            }, {
+                onConflict: 'user_id, provider'
             });
-            
+
         if (error) throw error;
         return data;
     } catch (error) {
@@ -40,18 +40,58 @@ export async function saveApiKey(provider, apiKey) {
  */
 export async function getApiKeys() {
     try {
+        console.log("getApiKeys: Starting API key retrieval");
         const user = getCurrentUserState();
-        if (!user) throw new Error('User not authenticated');
-        
+
+        if (!user) {
+            console.error("getApiKeys: No authenticated user found");
+            throw new Error('User not authenticated');
+        }
+
+        console.log(`getApiKeys: Fetching API keys for user ID: ${user.id}`);
+
+        // First try a direct query to check if the table exists and is accessible
+        try {
+            const { count, error: countError } = await supabase
+                .from('api_keys')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id);
+
+            if (countError) {
+                console.error("getApiKeys: Error checking API keys count:", countError);
+            } else {
+                console.log(`getApiKeys: Found ${count} API keys for user`);
+            }
+        } catch (countError) {
+            console.error("getApiKeys: Exception during count check:", countError);
+        }
+
+        // Now perform the actual query
+        console.log("getApiKeys: Executing main query");
         const { data, error } = await supabase
             .from('api_keys')
             .select('provider, encrypted_key')
             .eq('user_id', user.id);
-            
-        if (error) throw error;
-        return data || [];
+
+        if (error) {
+            console.error("getApiKeys: Query error:", error);
+            throw error;
+        }
+
+        if (!data || data.length === 0) {
+            console.warn("getApiKeys: No API keys found for user");
+            return [];
+        }
+
+        console.log(`getApiKeys: Successfully retrieved ${data.length} API keys`);
+        // Log providers without exposing the actual keys
+        const providers = data.map(key => key.provider);
+        console.log("getApiKeys: Found keys for providers:", providers);
+
+        return data;
     } catch (error) {
         console.error('Error getting API keys:', error);
+        console.error('Error details:', error.stack || "No stack trace available");
         return [];
     }
 }
@@ -65,19 +105,19 @@ export async function saveSettings(settings) {
     try {
         const user = getCurrentUserState();
         if (!user) throw new Error('User not authenticated');
-        
+
         const { data, error } = await supabase
             .from('settings')
-            .upsert({ 
+            .upsert({
                 user_id: user.id,
                 default_model: settings.model,
                 tts_instructions: settings.ttsInstructions,
                 tts_voice: settings.ttsVoice,
                 enable_html_sandbox: settings.enableHtmlSandbox
-            }, { 
-                onConflict: 'user_id' 
+            }, {
+                onConflict: 'user_id'
             });
-            
+
         if (error) throw error;
         return data;
     } catch (error) {
@@ -94,15 +134,15 @@ export async function getSettings() {
     try {
         const user = getCurrentUserState();
         if (!user) throw new Error('User not authenticated');
-        
+
         const { data, error } = await supabase
             .from('settings')
             .select('*')
             .eq('user_id', user.id)
             .single();
-            
+
         if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "no rows returned"
-        
+
         return data || {};
     } catch (error) {
         console.error('Error getting settings:', error);
@@ -121,25 +161,25 @@ export async function saveChat(history, existingChatId = null, title = null) {
     try {
         const user = getCurrentUserState();
         if (!user) throw new Error('User not authenticated');
-        
+
         if (!history || history.length === 0) {
             console.warn("Attempted to save an empty chat history.");
             return null;
         }
-        
+
         // Determine title
         let chatTitle = title;
         if (!chatTitle) {
             const firstUserMessage = history.find(m => m.role === 'user' && m.content);
-            chatTitle = firstUserMessage 
-                ? firstUserMessage.content.substring(0, 40) + (firstUserMessage.content.length > 40 ? '...' : '') 
+            chatTitle = firstUserMessage
+                ? firstUserMessage.content.substring(0, 40) + (firstUserMessage.content.length > 40 ? '...' : '')
                 : `Chat ${new Date().toLocaleTimeString()}`;
         }
-        
+
         // Save or update chat metadata
         let chatId = existingChatId;
         let chatData;
-        
+
         if (!chatId) {
             // Create new chat
             const { data, error } = await supabase
@@ -150,7 +190,7 @@ export async function saveChat(history, existingChatId = null, title = null) {
                 })
                 .select()
                 .single();
-                
+
             if (error) throw error;
             chatData = data;
             chatId = data.id;
@@ -166,21 +206,21 @@ export async function saveChat(history, existingChatId = null, title = null) {
                 .eq('user_id', user.id)
                 .select()
                 .single();
-                
+
             if (error) throw error;
             chatData = data;
         }
-        
+
         // Delete existing messages if updating
         if (existingChatId) {
             const { error: deleteError } = await supabase
                 .from('messages')
                 .delete()
                 .eq('chat_id', chatId);
-                
+
             if (deleteError) throw deleteError;
         }
-        
+
         // Save messages
         const messages = history.map(msg => ({
             chat_id: chatId,
@@ -188,16 +228,17 @@ export async function saveChat(history, existingChatId = null, title = null) {
             content: msg.content,
             metadata: {
                 imageData: msg.imageData || null,
+                generatedImageUrl: msg.generatedImageUrl || null,
                 attachedFilesMeta: msg.attachedFilesMeta || null
             }
         }));
-        
+
         const { error: messagesError } = await supabase
             .from('messages')
             .insert(messages);
-            
+
         if (messagesError) throw messagesError;
-        
+
         return {
             id: chatId,
             title: chatTitle,
@@ -217,15 +258,15 @@ export async function getChatList() {
     try {
         const user = getCurrentUserState();
         if (!user) throw new Error('User not authenticated');
-        
+
         const { data, error } = await supabase
             .from('chats')
             .select('id, title, updated_at')
             .eq('user_id', user.id)
             .order('updated_at', { ascending: false });
-            
+
         if (error) throw error;
-        
+
         return data.map(chat => ({
             id: chat.id,
             title: chat.title,
@@ -246,19 +287,20 @@ export async function loadChat(chatId) {
     try {
         const user = getCurrentUserState();
         if (!user) throw new Error('User not authenticated');
-        
+
         const { data, error } = await supabase
             .from('messages')
             .select('role, content, metadata')
             .eq('chat_id', chatId)
             .order('created_at', { ascending: true });
-            
+
         if (error) throw error;
-        
+
         return data.map(msg => ({
             role: msg.role,
             content: msg.content,
             imageData: msg.metadata?.imageData || null,
+            generatedImageUrl: msg.metadata?.generatedImageUrl || null,
             attachedFilesMeta: msg.metadata?.attachedFilesMeta || null
         }));
     } catch (error) {
@@ -276,24 +318,24 @@ export async function deleteChat(chatId) {
     try {
         const user = getCurrentUserState();
         if (!user) throw new Error('User not authenticated');
-        
+
         // Delete messages first (cascade would be better in the DB schema)
         const { error: messagesError } = await supabase
             .from('messages')
             .delete()
             .eq('chat_id', chatId);
-            
+
         if (messagesError) throw messagesError;
-        
+
         // Then delete the chat
         const { error } = await supabase
             .from('chats')
             .delete()
             .eq('id', chatId)
             .eq('user_id', user.id);
-            
+
         if (error) throw error;
-        
+
         return true;
     } catch (error) {
         showNotification(`Error deleting chat: ${error.message}`, 'error');
@@ -310,14 +352,14 @@ export async function saveCustomGpt(config) {
     try {
         const user = getCurrentUserState();
         if (!user) throw new Error('User not authenticated');
-        
+
         if (!config || !config.name || !config.name.trim()) {
             showNotification("Configuration must have a name.", "error");
             return null;
         }
-        
+
         const configId = config.id || crypto.randomUUID();
-        
+
         // Save the main config
         const { data, error } = await supabase
             .from('custom_gpts')
@@ -333,9 +375,9 @@ export async function saveCustomGpt(config) {
             })
             .select()
             .single();
-            
+
         if (error) throw error;
-        
+
         // Handle knowledge files
         if (config.knowledgeFiles && config.knowledgeFiles.length > 0) {
             // Delete existing knowledge files if updating
@@ -343,9 +385,9 @@ export async function saveCustomGpt(config) {
                 .from('knowledge_files')
                 .delete()
                 .eq('custom_gpt_id', configId);
-                
+
             if (deleteError) throw deleteError;
-            
+
             // Insert new knowledge files
             const knowledgeFiles = config.knowledgeFiles.map(file => ({
                 custom_gpt_id: configId,
@@ -353,14 +395,14 @@ export async function saveCustomGpt(config) {
                 type: file.type,
                 content: file.content
             }));
-            
+
             const { error: filesError } = await supabase
                 .from('knowledge_files')
                 .insert(knowledgeFiles);
-                
+
             if (filesError) throw filesError;
         }
-        
+
         return {
             id: configId,
             name: config.name,
@@ -380,13 +422,13 @@ export async function getCustomGptList() {
     try {
         const user = getCurrentUserState();
         if (!user) throw new Error('User not authenticated');
-        
+
         const { data, error } = await supabase
             .from('custom_gpts')
             .select('id, name, description')
             .eq('user_id', user.id)
             .order('name');
-            
+
         if (error) throw error;
         return data || [];
     } catch (error) {
@@ -404,7 +446,7 @@ export async function loadCustomGpt(configId) {
     try {
         const user = getCurrentUserState();
         if (!user) throw new Error('User not authenticated');
-        
+
         // Get the main config
         const { data: config, error } = await supabase
             .from('custom_gpts')
@@ -412,17 +454,17 @@ export async function loadCustomGpt(configId) {
             .eq('id', configId)
             .eq('user_id', user.id)
             .single();
-            
+
         if (error) throw error;
-        
+
         // Get knowledge files
         const { data: files, error: filesError } = await supabase
             .from('knowledge_files')
             .select('name, type, content')
             .eq('custom_gpt_id', configId);
-            
+
         if (filesError) throw filesError;
-        
+
         return {
             ...config,
             knowledgeFiles: files || []
@@ -442,24 +484,24 @@ export async function deleteCustomGpt(configId) {
     try {
         const user = getCurrentUserState();
         if (!user) throw new Error('User not authenticated');
-        
+
         // Delete knowledge files first (cascade would be better in the DB schema)
         const { error: filesError } = await supabase
             .from('knowledge_files')
             .delete()
             .eq('custom_gpt_id', configId);
-            
+
         if (filesError) throw filesError;
-        
+
         // Then delete the config
         const { error } = await supabase
             .from('custom_gpts')
             .delete()
             .eq('id', configId)
             .eq('user_id', user.id);
-            
+
         if (error) throw error;
-        
+
         return true;
     } catch (error) {
         showNotification(`Error deleting custom GPT: ${error.message}`, 'error');

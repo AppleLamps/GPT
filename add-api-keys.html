@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add API Keys</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+    <h1>Add API Keys</h1>
+    
+    <div id="auth-status">Checking authentication...</div>
+    
+    <div id="login-form" style="display: none;">
+        <h2>Sign In</h2>
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" required>
+        </div>
+        <button id="sign-in-btn">Sign In</button>
+    </div>
+    
+    <div id="api-key-form" style="display: none;">
+        <h2>Your API Keys</h2>
+        <div class="form-group">
+            <label for="openai-key">OpenAI API Key:</label>
+            <input type="text" id="openai-key" placeholder="sk-...">
+        </div>
+        <div class="form-group">
+            <label for="gemini-key">Google Gemini API Key:</label>
+            <input type="text" id="gemini-key" placeholder="AIzaSy...">
+        </div>
+        <div class="form-group">
+            <label for="xai-key">XAI API Key:</label>
+            <input type="text" id="xai-key" placeholder="xai-...">
+        </div>
+        <button id="save-keys-btn">Save API Keys</button>
+        <button id="sign-out-btn" style="background-color: #f44336; margin-left: 10px;">Sign Out</button>
+    </div>
+    
+    <div id="status" class="status" style="display: none;"></div>
+    
+    <!-- Include Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        // Initialize Supabase client
+        const supabaseUrl = 'https://keuxuonslkcvdeysdoge.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtldXh1b25zbGtjdmRleXNkb2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyNjc5MjUsImV4cCI6MjA2MDg0MzkyNX0.C1Bkoo9A3BlbfkHlUj7UdCmOPonMFftEFTOTHVQWIl4';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        
+        // DOM elements
+        const authStatusEl = document.getElementById('auth-status');
+        const loginFormEl = document.getElementById('login-form');
+        const apiKeyFormEl = document.getElementById('api-key-form');
+        const statusEl = document.getElementById('status');
+        
+        // Check authentication status
+        async function checkAuth() {
+            try {
+                const { data, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    throw error;
+                }
+                
+                const user = data.session?.user;
+                
+                if (user) {
+                    // User is signed in
+                    authStatusEl.innerHTML = `Signed in as <strong>${user.email}</strong>`;
+                    loginFormEl.style.display = 'none';
+                    apiKeyFormEl.style.display = 'block';
+                    
+                    // Load existing API keys
+                    loadApiKeys(user.id);
+                } else {
+                    // User is not signed in
+                    authStatusEl.innerHTML = 'Please sign in to manage your API keys';
+                    loginFormEl.style.display = 'block';
+                    apiKeyFormEl.style.display = 'none';
+                }
+            } catch (error) {
+                showStatus(`Error checking authentication: ${error.message}`, 'error');
+            }
+        }
+        
+        // Load existing API keys
+        async function loadApiKeys(userId) {
+            try {
+                const { data, error } = await supabase
+                    .from('api_keys')
+                    .select('provider, encrypted_key')
+                    .eq('user_id', userId);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                if (data && data.length > 0) {
+                    // Populate form with existing keys
+                    data.forEach(key => {
+                        if (key.provider === 'openai') {
+                            document.getElementById('openai-key').value = key.encrypted_key;
+                        } else if (key.provider === 'gemini') {
+                            document.getElementById('gemini-key').value = key.encrypted_key;
+                        } else if (key.provider === 'xai') {
+                            document.getElementById('xai-key').value = key.encrypted_key;
+                        }
+                    });
+                    
+                    showStatus(`Loaded ${data.length} existing API keys`, 'success');
+                }
+            } catch (error) {
+                showStatus(`Error loading API keys: ${error.message}`, 'error');
+            }
+        }
+        
+        // Save API keys
+        async function saveApiKeys() {
+            try {
+                const { data: { session }, error: authError } = await supabase.auth.getSession();
+                
+                if (authError) {
+                    throw authError;
+                }
+                
+                const user = session?.user;
+                if (!user) {
+                    throw new Error('Not authenticated');
+                }
+                
+                const openaiKey = document.getElementById('openai-key').value.trim();
+                const geminiKey = document.getElementById('gemini-key').value.trim();
+                const xaiKey = document.getElementById('xai-key').value.trim();
+                
+                const keysToSave = [];
+                
+                if (openaiKey) {
+                    keysToSave.push({
+                        user_id: user.id,
+                        provider: 'openai',
+                        encrypted_key: openaiKey
+                    });
+                    
+                    // Also save to localStorage as a backup
+                    localStorage.setItem('openai_api_key', openaiKey);
+                }
+                
+                if (geminiKey) {
+                    keysToSave.push({
+                        user_id: user.id,
+                        provider: 'gemini',
+                        encrypted_key: geminiKey
+                    });
+                    
+                    // Also save to localStorage as a backup
+                    localStorage.setItem('google_gemini_api_key', geminiKey);
+                }
+                
+                if (xaiKey) {
+                    keysToSave.push({
+                        user_id: user.id,
+                        provider: 'xai',
+                        encrypted_key: xaiKey
+                    });
+                    
+                    // Also save to localStorage as a backup
+                    localStorage.setItem('xai_api_key', xaiKey);
+                }
+                
+                if (keysToSave.length === 0) {
+                    showStatus('Please enter at least one API key', 'error');
+                    return;
+                }
+                
+                const { error } = await supabase
+                    .from('api_keys')
+                    .upsert(keysToSave, {
+                        onConflict: 'user_id,provider'
+                    });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                showStatus(`Successfully saved ${keysToSave.length} API keys`, 'success');
+            } catch (error) {
+                showStatus(`Error saving API keys: ${error.message}`, 'error');
+            }
+        }
+        
+        // Sign in
+        async function signIn() {
+            try {
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+                
+                if (!email || !password) {
+                    showStatus('Please enter both email and password', 'error');
+                    return;
+                }
+                
+                const { error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                showStatus('Signed in successfully', 'success');
+                checkAuth();
+            } catch (error) {
+                showStatus(`Error signing in: ${error.message}`, 'error');
+            }
+        }
+        
+        // Sign out
+        async function signOut() {
+            try {
+                const { error } = await supabase.auth.signOut();
+                
+                if (error) {
+                    throw error;
+                }
+                
+                showStatus('Signed out successfully', 'success');
+                checkAuth();
+            } catch (error) {
+                showStatus(`Error signing out: ${error.message}`, 'error');
+            }
+        }
+        
+        // Show status message
+        function showStatus(message, type) {
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            statusEl.style.display = 'block';
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Event listeners
+        document.getElementById('sign-in-btn').addEventListener('click', signIn);
+        document.getElementById('save-keys-btn').addEventListener('click', saveApiKeys);
+        document.getElementById('sign-out-btn').addEventListener('click', signOut);
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+</body>
+</html>

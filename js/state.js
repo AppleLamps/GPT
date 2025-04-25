@@ -36,12 +36,13 @@ export function getChatHistory() {
 
 /**
  * Adds a message to the chat history.
- * @param {{role: string, content: string, imageData?: string | null, attachedFilesMeta?: Array<{name: string, type: string}>}} message - The message object.
+ * @param {{role: string, content: string, imageData?: string | null, generatedImageUrl?: string | null, attachedFilesMeta?: Array<{name: string, type: string}>}} message - The message object.
  */
 export function addMessageToHistory(message) {
     const messageToAdd = {
         ...message,
         imageData: message.imageData || null,
+        generatedImageUrl: message.generatedImageUrl || null,
         attachedFilesMeta: message.attachedFilesMeta || null
     };
     chatHistory.push(messageToAdd);
@@ -154,19 +155,38 @@ export async function loadSettings() { // <-- Made async
 
     // 2. If user is logged in, try to load from Supabase
     if (currentUser) { // <-- Check the currentUser state variable
-        console.log(`User ${currentUser.email} logged in. Fetching settings from Supabase...`);
+        console.log(`User ${currentUser.email} (ID: ${currentUser.id}) logged in. Fetching settings from Supabase...`);
         try {
             // Fetch both settings and API keys concurrently
+            console.log("Starting API key fetch from Supabase...");
+            const apiKeysPromise = dataService.getApiKeys();
+            console.log("Starting settings fetch from Supabase...");
+            const settingsPromise = dataService.getSettings();
+
+            // Wait for both promises to resolve
             const [dbSettings, dbApiKeys] = await Promise.all([
-                dataService.getSettings(), // Fetches from dataService.js
-                dataService.getApiKeys()   // Fetches from dataService.js
+                settingsPromise,
+                apiKeysPromise
             ]);
 
             console.log("Fetched DB Settings:", dbSettings);
             console.log("Fetched DB API Keys:", dbApiKeys);
 
+            // Debug: Check if API keys are in the expected format
+            if (dbApiKeys) {
+                console.log(`API Keys array length: ${dbApiKeys.length}`);
+                if (dbApiKeys.length > 0) {
+                    console.log("First API key structure:", JSON.stringify(dbApiKeys[0]));
+                } else {
+                    console.warn("No API keys found in database for this user");
+                }
+            } else {
+                console.error("API keys response is null or undefined");
+            }
+
             // 3. Merge Supabase data into the settings object, overwriting localStorage values
             if (dbSettings && Object.keys(dbSettings).length > 0) {
+                console.log("Merging DB settings into app state...");
                 // Use DB value if it exists, otherwise keep the value loaded from localStorage/default
                 settings.model = dbSettings.default_model || settings.model;
                 settings.ttsInstructions = dbSettings.tts_instructions !== null ? dbSettings.tts_instructions : settings.ttsInstructions; // Handle null from DB
@@ -175,23 +195,41 @@ export async function loadSettings() { // <-- Made async
             }
 
             if (dbApiKeys && dbApiKeys.length > 0) {
+                console.log("Merging API keys into app state...");
                 dbApiKeys.forEach(key => {
                     // Use the key from DB ONLY if it's not empty/null
                     if (key.encrypted_key) {
+                        console.log(`Processing API key for provider: ${key.provider}`);
                         if (key.provider === 'openai') {
                             settings.apiKey = key.encrypted_key;
+                            console.log("Set OpenAI API key from database");
                         } else if (key.provider === 'gemini') {
                             settings.geminiApiKey = key.encrypted_key;
+                            console.log("Set Gemini API key from database");
                         } else if (key.provider === 'xai') {
                             settings.xaiApiKey = key.encrypted_key;
+                            console.log("Set XAI API key from database");
+                        } else {
+                            console.warn(`Unknown provider: ${key.provider}`);
                         }
+                    } else {
+                        console.warn(`Empty encrypted_key for provider: ${key.provider}`);
                     }
                 });
+            } else {
+                console.warn("No API keys found or empty array returned");
             }
-            console.log("Settings after merging Supabase data:", { ...settings });
+            console.log("Settings after merging Supabase data:", {
+                apiKey: settings.apiKey ? "API key present" : "No API key",
+                model: settings.model,
+                geminiApiKey: settings.geminiApiKey ? "Gemini API key present" : "No Gemini API key",
+                xaiApiKey: settings.xaiApiKey ? "XAI API key present" : "No XAI API key",
+                // Other settings...
+            });
 
         } catch (error) {
             console.error("Failed to load settings/keys from Supabase, using localStorage fallback:", error);
+            console.error("Error details:", error.stack || "No stack trace available");
             // Fallback to localStorage values already set if Supabase fetch fails
         }
     } else {
