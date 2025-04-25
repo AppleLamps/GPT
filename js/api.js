@@ -45,354 +45,383 @@ function getOpenAIClient() {
  * @param {boolean} useWebSearch - Whether web search was toggled ON for this message.
  */
 export async function routeApiCall(selectedModelSetting, useWebSearch) {
-    // Don't check for API key here - we'll check when we know which model is being used
-    
-    const activeConfig = state.getActiveCustomGptConfig();
+    // Early validation of history and last user message
     const history = state.getChatHistory();
-    const isImageGenMode = state.getIsImageGenerationMode();
-
-    // --- Determine effective settings based on activeConfig ---
-    let finalModel = selectedModelSetting;
-    let finalSystemPrompt = null;
-    let knowledgeContent = "";
-    let capabilities = { webSearch: useWebSearch };
-
-    const lastUserMessageEntry = history.filter(m => m.role === 'user').pop(); // Get the last user message from history
-
-    if (activeConfig) {
-        console.log(`Using Custom GPT Config: "${activeConfig.name}"`);
-        finalSystemPrompt = activeConfig.instructions || null;
-
-        if (activeConfig.knowledgeFiles && activeConfig.knowledgeFiles.length > 0) {
-            knowledgeContent = activeConfig.knowledgeFiles
-                .filter(kf => kf.content && !kf.error)
-                .map(kf => `--- START Knowledge: ${kf.name} ---\n${kf.content}\n--- END Knowledge: ${kf.name} ---`)
-                .join('\n\n');
-            if (knowledgeContent) {
-                console.log(`Injecting content from ${activeConfig.knowledgeFiles.filter(kf => kf.content && !kf.error).length} knowledge file(s).`);
-            }
-        }
-
-        if (activeConfig.capabilities && activeConfig.capabilities.webSearch !== undefined) {
-            capabilities.webSearch = activeConfig.capabilities.webSearch;
-            console.log(`Web search capability from config: ${capabilities.webSearch}`);
-        }
-
-        // Force gpt-4o if config uses features not compatible with o3-mini
-        if (finalModel === 'o3-mini-high' && (lastUserMessageEntry?.imageData || capabilities.webSearch || knowledgeContent || finalSystemPrompt)) {
-            console.warn(`Custom GPT "${activeConfig.name}" uses features likely requiring gpt-4o. Forcing model to gpt-4o.`);
-            finalModel = 'gpt-4o';
-        }
-        // Ensure web search is only active if the final model is gpt-4o or gpt-4o-latest
-        if (finalModel !== 'gpt-4o' && finalModel !== 'gpt-4o-latest') {
-            capabilities.webSearch = false;
-        }
-
-    } else {
-        console.log("Using default chat behavior (no Custom GPT config active).");
-        finalModel = selectedModelSetting;
-        capabilities.webSearch = useWebSearch;
-        // Ensure web search is only active if the final model is gpt-4o or gpt-4o-latest
-        if (finalModel !== 'gpt-4o' && finalModel !== 'gpt-4o-latest') {
-            capabilities.webSearch = false;
-        }
-    }
-    // --- End Determining Settings ---
-
+    const lastUserMessageEntry = history.filter(m => m.role === 'user').pop();
+    
     if (!history.length || !lastUserMessageEntry) {
         console.error("Cannot call API: No user message history found.");
         showNotification("Please type a message or upload an image first.", 'info');
         return;
     }
+    
+    // --- Determine effective settings based on configuration ---
+    const activeConfig = state.getActiveCustomGptConfig();
+    const isImageGenMode = state.getIsImageGenerationMode();
+    
+    // Initialize settings with defaults
+    const settings = {
+        model: selectedModelSetting,
+        systemPrompt: null,
+        knowledgeContent: "",
+        capabilities: { webSearch: useWebSearch }
+    };
 
+    // Apply custom GPT settings if available
+    if (activeConfig) {
+        console.log(`Using Custom GPT Config: "${activeConfig.name}"`);
+        settings.systemPrompt = activeConfig.instructions || null;
+
+        // Process knowledge files if they exist
+        if (activeConfig.knowledgeFiles?.length > 0) {
+            const validFiles = activeConfig.knowledgeFiles.filter(kf => kf.content && !kf.error);
+            if (validFiles.length > 0) {
+                settings.knowledgeContent = validFiles
+                    .map(kf => `--- START Knowledge: ${kf.name} ---\n${kf.content}\n--- END Knowledge: ${kf.name} ---`)
+                    .join('\n\n');
+                console.log(`Injecting content from ${validFiles.length} knowledge file(s).`);
+            }
+        }
+
+        // Get web search capability from config if defined
+        if (activeConfig.capabilities?.webSearch !== undefined) {
+            settings.capabilities.webSearch = activeConfig.capabilities.webSearch;
+            console.log(`Web search capability from config: ${settings.capabilities.webSearch}`);
+        }
+
+        // Force gpt-4o if config uses features not compatible with o3-mini
+        if (settings.model === 'o3-mini-high' && 
+            (lastUserMessageEntry?.imageData || 
+             settings.capabilities.webSearch || 
+             settings.knowledgeContent || 
+             settings.systemPrompt)) {
+            console.warn(`Custom GPT "${activeConfig.name}" uses features requiring gpt-4o. Upgrading model.`);
+            settings.model = 'gpt-4o';
+        }
+    } else {
+        console.log("Using default chat behavior (no Custom GPT active).");
+    }
+
+    // Ensure web search is only used with compatible models
+    if (settings.model !== 'gpt-4o' && 
+        settings.model !== 'gpt-4o-latest' &&
+        settings.model !== 'gpt-4.5-preview' && 
+        settings.model !== 'gpt-4.1') {
+        settings.capabilities.webSearch = false;
+    }
+
+    // Validate effective input
     const lastUserMessageContent = lastUserMessageEntry.content || "";
-    const effectiveInputExists = lastUserMessageContent || lastUserMessageEntry.imageData || knowledgeContent || finalSystemPrompt;
+    const effectiveInputExists = lastUserMessageContent || 
+                                lastUserMessageEntry.imageData || 
+                                settings.knowledgeContent || 
+                                settings.systemPrompt;
 
     if (!effectiveInputExists) {
-        console.error("Cannot call API: No effective user input (text, image, knowledge, or system prompt) in the last turn.");
+        console.error("Cannot call API: No effective user input.");
         showNotification("Please type a message, upload an image, or ensure your Custom GPT provides context.", 'info');
         return;
     }
 
-    // Check for image generation mode first
+    // --- ROUTE TO APPROPRIATE API ENDPOINT ---
+    
+    // Image generation gets priority if that mode is active
     if (isImageGenMode) {
-        console.log(`Routing to Supabase Edge Function 'generate-image'`);
-
-        // Check if Supabase client is available (it should be)
-        if (!supabase) {
-             console.error("Supabase client is not available. Cannot call Edge Function.");
-             showNotification("Error: Supabase client not initialized. Cannot generate image.", 'error');
-             return;
-        }
-
-        // Clear previous image URL state immediately
-        state.clearLastGeneratedImageUrl();
-        const aiMessageElement = createAIMessageContainer(); // Create container
-        if (!aiMessageElement) {
-            console.error("Failed to create AI message container for placeholder.");
-            showNotification("Error displaying image placeholder.", 'error');
-            return;
-        }
-
-        // <<< ADD PLACEHOLDER CLASS >>>
-        aiMessageElement.classList.add('image-placeholder');
-        showChatInterface(); // <<< ENSURE CHAT IS VISIBLE >>>
-
-        // <<< REMOVE OLD PLACEHOLDER LOGIC (Commented out or deleted) >>>
-        /*
-        // Add placeholder HTML immediately - NO LONGER NEEDED
-        const placeholderHtml = '<div class="image-loading-placeholder"></div>';
-        const contentElement = aiMessageElement.querySelector('.ai-message-content');
-        if (contentElement) {
-            contentElement.innerHTML = placeholderHtml;
-        } else {
-            console.error("Could not find content element to insert placeholder.");
-        }
-        */
-        // No typing indicator needed, placeholder serves this purpose
-        // showTypingIndicator(aiMessageElement);
-
-        try {
-            // Call the Supabase Edge Function
-            const { data, error } = await supabase.functions.invoke('generate-image', {
-                body: { prompt: lastUserMessageContent } // Pass prompt in the body
-            });
-
-            // <<< REMOVE PLACEHOLDER CLASS >>>
-            if (aiMessageElement) aiMessageElement.classList.remove('image-placeholder');
-
-            // Handle errors returned directly by the invoke call (network, function setup errors)
-            if (error) {
-                console.error("Error invoking Supabase function 'generate-image':", error);
-                throw new Error(error.message || "Unknown error invoking Supabase function.");
-            }
-
-            // Handle errors returned *within* the function's JSON response
-            if (data && data.error) {
-                console.error("Error returned from Supabase function 'generate-image':", data.error);
-                throw new Error(data.error); // Use the error message from the function
-            }
-
-            // Handle successful response with base64 image data
-            if (data && data.b64_json) { // <<< CHANGED: Check for b64_json
-                // <<< CHANGED: Construct data URL from base64 string >>>
-                const imageUrl = `data:image/png;base64,${data.b64_json}`;
-                const revisedPrompt = data.revised_prompt; // Get revised prompt
-
-                console.log("Image generated successfully via Supabase function (Base64).");
-
-                // Construct final content
-                let finalContent = `<img src="${imageUrl}" alt="Generated image" style="max-width: 100%; border-radius: 6px; display: block; margin-top: 8px;">`;
-                // Optional: Still display revised prompt if desired, just don't save it
-                // if (revisedPrompt) {
-                //     finalContent = `<p>Revised prompt: <em>${escapeHTML(revisedPrompt)}</em></p>` + finalContent;
-                // }
-
-
-                // Finalize the content (this will replace the placeholder)
-                finalizeAIMessageContent(aiMessageElement, finalContent, false); // Pass false for markdown processing
-                console.log("Image content finalized, replacing placeholder.");
-
-                // Setup actions with the image URL (base64 data URL works here)
-                setupMessageActions(aiMessageElement, imageUrl, true);
-                console.log("Image actions set up.");
-
-                // Add to history with the image URL
-                console.log("Adding image message to history...");
-                // <<< MODIFY HISTORY SAVING HERE >>>
-                state.addMessageToHistory({
-                    role: 'assistant',
-                    content: '[Generated Image]', // <<< CHANGED
-                    imageUrl: imageUrl // Store the actual image data URL
-                });
-                console.log("Image message added to history.");
-
-            } else {
-                // Handle cases where the function executed but didn't return expected data
-                console.error("Invalid response structure from Supabase function 'generate-image' (missing b64_json or error?):", data);
-                 throw new Error("Function returned invalid data structure.");
-            }
-
-        } catch (error) { // Catches errors thrown above (invoke, data.error, missing data)
-            // <<< REMOVE PLACEHOLDER CLASS (already done before checks, but ensure if error happens earlier) >>>
-            if (aiMessageElement && aiMessageElement.classList.contains('image-placeholder')) {
-                 aiMessageElement.classList.remove('image-placeholder');
-            }
-
-            // Catch network errors calling the function or errors thrown above
-            console.error("Error during Supabase function call or processing:", error);
-            const errorHtml = `<p class="error-message">Error generating image: ${escapeHTML(error.message || 'Unknown error')}</p>`;
-            // Finalize with error message (this replaces the placeholder)
-            // Ensure aiMessageElement exists before finalizing
-            if (aiMessageElement) {
-                finalizeAIMessageContent(aiMessageElement, errorHtml, false); // Pass false for markdown
-            } else {
-                 // If the container wasn't even created, maybe show a notification?
-                 console.error("Cannot display error in chat, AI message container does not exist.");
-            }
-
-
-            // No need for removeTypingIndicator call (handled by placeholder logic)
-            showNotification(`Error generating image: ${error.message || 'Please check console for details.'}`, 'error');
-             // Add error message to history
-             state.addMessageToHistory({
-                role: 'assistant',
-                content: `[Error generating image: ${error.message || 'Unknown error'}]`
-            });
-        }
-        return; // Stop further processing after handling image generation
+        await handleImageGeneration(lastUserMessageContent);
+        return;
     }
-
-    // --- API Routing for chat/responses ---
-    const isGeminiModel = finalModel.startsWith('gemini-'); // Check if it's a Gemini model
-    const isGrokModel = finalModel.startsWith('grok-'); // Check if it's a Grok model
-
+    
+    // Route based on model type
+    const isGeminiModel = settings.model.startsWith('gemini-');
+    const isGrokModel = settings.model.startsWith('grok-');
+    
     if (isGrokModel) {
-        console.log(`Routing to Grok API for model: ${finalModel}`);
-        // Get X.AI API key for Grok models
-        const xaiApiKey = state.getXaiApiKey();
-        if (!xaiApiKey) {
-            showNotification("Error: X.AI API key is required for Grok models. Please add it in Settings.", 'error');
-            return;
-        }
+        await handleGrokCompletion(settings, history, lastUserMessageEntry);
+    } else if (isGeminiModel) {
+        await handleGeminiCompletion(settings, history, lastUserMessageEntry);
+    } else if (settings.model === 'o3-mini-high') {
+        await handleO3MiniCompletion(settings, history, lastUserMessageEntry);
+    } else if (settings.model === 'o4-mini') {
+        await handleO4MiniCompletion(settings, history, lastUserMessageEntry);
+    } else if (settings.model === 'gpt-4o' || 
+               settings.model === 'gpt-4.1' || 
+               settings.model === 'gpt-4.5-preview') {
+        await handleGPT4Completion(settings, history, lastUserMessageEntry);
+    } else {
+        console.error(`Model "${settings.model}" routing not implemented.`);
+        showNotification(`Model "${settings.model}" is not supported.`, 'error');
+    }
+}
 
-        // Grok models use Chat Completions API format but with different endpoint
-        const messagesPayload = buildMessagesPayload(history, finalSystemPrompt, knowledgeContent);
-        const requestBody = {
-            model: finalModel,
-            messages: messagesPayload,
-            stream: true,
-            reasoning: true // Request reasoning content
-            // Use high reasoning effort only for grok-3-mini if needed
-            // ...(finalModel === 'grok-3-mini-beta' && { reasoning_effort: 'high' })
-        };
-
-        await fetchGrokCompletions(xaiApiKey, requestBody);
+/**
+ * Handle image generation via Supabase Edge Function
+ * @param {string} prompt - The user prompt for image generation
+ */
+async function handleImageGeneration(prompt) {
+    console.log(`Routing to Supabase Edge Function 'generate-image'`);
+    
+    if (!supabase) {
+        console.error("Supabase client is not available. Cannot call Edge Function.");
+        showNotification("Error: Supabase client not initialized. Cannot generate image.", 'error');
         return;
     }
 
-    if (isGeminiModel) {
-        console.log(`Routing to Gemini API for model: ${finalModel}`);
-        const geminiApiKey = state.getGeminiApiKey(); // Get Gemini key
-        if (!geminiApiKey) {
-            showNotification("Error: Google Gemini API key is required for Gemini models. Please add it in Settings.", 'error');
-            return; // Stop if key is missing
+    // Clear previous image URL state
+    state.clearLastGeneratedImageUrl();
+    
+    // Create message container with placeholder styling
+    const aiMessageElement = createAIMessageContainer();
+    if (!aiMessageElement) {
+        console.error("Failed to create AI message container for placeholder.");
+        showNotification("Error displaying image placeholder.", 'error');
+        return;
+    }
+
+    // Add placeholder class and show chat interface
+    aiMessageElement.classList.add('image-placeholder');
+    showChatInterface();
+
+    try {
+        // Call the Supabase Edge Function
+        const { data, error } = await supabase.functions.invoke('generate-image', {
+            body: { prompt }
+        });
+
+        // Remove placeholder class
+        aiMessageElement.classList.remove('image-placeholder');
+
+        // Handle errors from the invoke call
+        if (error) {
+            throw new Error(error.message || "Unknown error invoking Supabase function.");
         }
 
-        // Build Gemini Payloads using helpers
-        const geminiContents = buildGeminiPayloadContents(state.getChatHistory(), null); // Pass history, System prompt handled separately
-        const geminiSystemInstruction = buildGeminiSystemInstruction(finalSystemPrompt);
-        const geminiGenerationConfig = buildGeminiGenerationConfig();
-
-        // Inject knowledge content into the last user message's text part within geminiContents
-        if (knowledgeContent && geminiContents && geminiContents.length > 0) {
-            const lastContent = geminiContents[geminiContents.length - 1];
-            if (lastContent.role === 'user' && lastContent.parts) {
-                const textPart = lastContent.parts.find(p => p.text !== undefined);
-                if (textPart) {
-                    textPart.text = knowledgeContent + "\n\n" + (textPart.text || '');
-                    console.log("Knowledge content prepended to last user message for Gemini.");
-                } else {
-                    // If no text part exists (e.g., image-only message), add one
-                    lastContent.parts.unshift({ text: knowledgeContent });
-                    console.log("Knowledge content added as new text part to last user message for Gemini.");
-                }
-            } else {
-                console.warn("Could not find suitable last user message part to prepend knowledge to for Gemini.");
-            }
+        // Handle errors returned within the function response
+        if (data && data.error) {
+            throw new Error(data.error);
         }
 
-        if (!geminiContents) {
-            showNotification("Failed to prepare message data for Gemini API.", "error");
-            return;
+        // Handle successful response with base64 image data
+        if (data && data.b64_json) {
+            const imageUrl = `data:image/png;base64,${data.b64_json}`;
+            const revisedPrompt = data.revised_prompt;
+            
+            // Store for potential reuse
+            state.setLastGeneratedImageUrl(imageUrl);
+            
+            // Construct final content with the image
+            const finalContent = `<img src="${imageUrl}" alt="Generated image" style="max-width: 100%; border-radius: 6px; display: block; margin-top: 8px;">`;
+            
+            // Finalize content
+            finalizeAIMessageContent(aiMessageElement, finalContent, false);
+            setupMessageActions(aiMessageElement, imageUrl, true);
+            
+            // Add to history
+            state.addMessageToHistory({
+                role: 'assistant',
+                content: '[Generated Image]',
+                imageUrl: imageUrl
+            });
+            
+            console.log("Image generated successfully.");
+        } else {
+            throw new Error("Function returned invalid data structure.");
+        }
+    } catch (error) {
+        console.error("Error during image generation:", error);
+
+        // Remove placeholder class if still present
+        if (aiMessageElement.classList.contains('image-placeholder')) {
+            aiMessageElement.classList.remove('image-placeholder');
         }
 
-        // Call the Gemini fetch function
-        await fetchGeminiStream(
-            geminiApiKey,
-            finalModel, // Pass the specific model name
-            geminiContents,
-            geminiSystemInstruction,
-            geminiGenerationConfig
-        );
-        // Gemini call handles its own UI updates via messageList functions
-
-    } else if (finalModel === 'o3-mini-high') {
-        console.log("Routing to Chat Completions API for o3-mini");
+        // Display error in message
+        const errorHtml = `<p class="error-message">Error generating image: ${escapeHTML(error.message || 'Unknown error')}</p>`;
+        finalizeAIMessageContent(aiMessageElement, errorHtml, false);
         
-        // Check for OpenAI API key only when needed for OpenAI models
-        const apiKey = state.getApiKey();
-        if (!apiKey) {
-            showNotification("Error: OpenAI API key is required for o3-mini model. Please add it in Settings.", 'error');
-            return;
-        }
+        // Also show notification
+        showNotification(`Error generating image: ${error.message || 'Please check console for details.'}`, 'error');
         
-        // Pass the specific last user message entry for modification if needed
-        const messagesPayload = buildMessagesPayload(history, finalSystemPrompt, knowledgeContent);
-        state.setPreviousResponseId(null);
-        await fetchChatCompletions(apiKey, messagesPayload);
-
-    } else if (finalModel === 'o4-mini') {
-        console.log("Routing to Responses API for o4-mini with high reasoning");
-        
-        // Check for OpenAI API key only when needed for OpenAI models
-        const apiKey = state.getApiKey();
-        if (!apiKey) {
-            showNotification("Error: OpenAI API key is required for o4-mini model. Please add it in Settings.", 'error');
-            return;
-        }
-        
-        const previousId = state.getPreviousResponseId();
-        let inputPayload = buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt);
-        if (!inputPayload) {
-            showNotification("Failed to prepare message data for API.", "error");
-            return;
-        }
-        const requestBody = {
-            model: "o4-mini",
-            input: inputPayload,
-            stream: true,
-            reasoning: { effort: "high" },
-            ...(previousId && { previous_response_id: previousId }),
-            ...(capabilities.webSearch && { tools: [{ type: "web_search_preview" }] })
-        };
-        await fetchResponsesApi(apiKey, requestBody);
-
-    } else if (finalModel === 'gpt-4o' || finalModel === 'gpt-4.1' || finalModel === 'gpt-4.5-preview') {
-        console.log(`Routing to Responses API for ${finalModel} ${capabilities.webSearch ? 'with Web Search' : ''}`);
-        
-        // Check for OpenAI API key only when needed for OpenAI models
-        const apiKey = state.getApiKey();
-        if (!apiKey) {
-            showNotification("Error: OpenAI API key is required for GPT models. Please add it in Settings.", 'error');
-            return;
-        }
-        
-        const previousId = state.getPreviousResponseId();
-
-        let inputPayload = buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt);
-        if (!inputPayload) {
-            showNotification("Failed to prepare message data for API.", "error");
-            return;
-        }
-
-        const requestBody = {
-            model: finalModel === 'gpt-4.1' ? 'gpt-4.1' :
-                   finalModel === 'gpt-4.5-preview' ? 'gpt-4.5-preview' : 'gpt-4o',
-            input: inputPayload,
-            stream: true,
-            temperature: 0.8,
-            ...(previousId && { previous_response_id: previousId }),
-            ...(capabilities.webSearch && { tools: [{ type: "web_search_preview" }] })
-        };
-
-        await fetchResponsesApi(apiKey, requestBody);
-
-    } else {
-        console.error(`Effective model "${finalModel}" routing not implemented.`);
-        showNotification(`Model "${finalModel}" routing not implemented.`, 'error');
+        // Add error message to history
+        state.addMessageToHistory({
+            role: 'assistant',
+            content: `[Error generating image: ${error.message || 'Unknown error'}]`
+        });
     }
 }
+
+/**
+ * Handle Grok model completion
+ */
+async function handleGrokCompletion(settings, history, lastUserMessageEntry) {
+    console.log(`Routing to Grok API for model: ${settings.model}`);
+    
+    // Check for X.AI API key
+    const xaiApiKey = state.getXaiApiKey();
+    if (!xaiApiKey) {
+        showNotification("Error: X.AI API key is required for Grok models. Please add it in Settings.", 'error');
+        return;
+    }
+    
+    // Build messages payload
+    const messagesPayload = buildMessagesPayload(history, settings.systemPrompt, settings.knowledgeContent);
+    
+    // Build request body
+    const requestBody = {
+        model: settings.model,
+        messages: messagesPayload,
+        stream: true,
+        reasoning: true
+    };
+
+    await fetchGrokCompletions(xaiApiKey, requestBody);
+}
+
+/**
+ * Handle Gemini model completion
+ */
+async function handleGeminiCompletion(settings, history, lastUserMessageEntry) {
+    console.log(`Routing to Gemini API for model: ${settings.model}`);
+    
+    // Check for Gemini API key
+    const geminiApiKey = state.getGeminiApiKey();
+    if (!geminiApiKey) {
+        showNotification("Error: Google Gemini API key is required. Please add it in Settings.", 'error');
+        return;
+    }
+    
+    // Build Gemini payloads
+    const geminiContents = buildGeminiPayloadContents(history, null);
+    if (!geminiContents) {
+        showNotification("Failed to prepare message data for Gemini API.", "error");
+        return;
+    }
+    
+    // Inject knowledge content if available
+    if (settings.knowledgeContent && geminiContents.length > 0) {
+        const lastContent = geminiContents[geminiContents.length - 1];
+        if (lastContent.role === 'user' && lastContent.parts) {
+            const textPart = lastContent.parts.find(p => p.text !== undefined);
+            if (textPart) {
+                textPart.text = settings.knowledgeContent + "\n\n" + (textPart.text || '');
+                console.log("Knowledge content prepended to last user message for Gemini.");
+            } else {
+                lastContent.parts.unshift({ text: settings.knowledgeContent });
+                console.log("Knowledge content added as new text part to last user message for Gemini.");
+            }
+        }
+    }
+    
+    const geminiSystemInstruction = buildGeminiSystemInstruction(settings.systemPrompt);
+    const geminiGenerationConfig = buildGeminiGenerationConfig();
+    
+    // Call the Gemini API
+    await fetchGeminiStream(
+        geminiApiKey,
+        settings.model,
+        geminiContents,
+        geminiSystemInstruction,
+        geminiGenerationConfig
+    );
+}
+
+/**
+ * Handle o3-mini model completion
+ */
+async function handleO3MiniCompletion(settings, history, lastUserMessageEntry) {
+    console.log("Routing to Chat Completions API for o3-mini");
+    
+    // Check for OpenAI API key
+    const apiKey = state.getApiKey();
+    if (!apiKey) {
+        showNotification("Error: OpenAI API key is required. Please add it in Settings.", 'error');
+        return;
+    }
+    
+    // Build messages payload
+    const messagesPayload = buildMessagesPayload(history, settings.systemPrompt, settings.knowledgeContent);
+    
+    // Reset previous response ID
+    state.setPreviousResponseId(null);
+    
+    // Call the Chat Completions API
+    await fetchChatCompletions(apiKey, messagesPayload);
+}
+
+/**
+ * Handle o4-mini model completion
+ */
+async function handleO4MiniCompletion(settings, history, lastUserMessageEntry) {
+    console.log("Routing to Responses API for o4-mini with high reasoning");
+    
+    // Check for OpenAI API key
+    const apiKey = state.getApiKey();
+    if (!apiKey) {
+        showNotification("Error: OpenAI API key is required. Please add it in Settings.", 'error');
+        return;
+    }
+    
+    // Get previous response ID for conversation continuity
+    const previousId = state.getPreviousResponseId();
+    
+    // Build input payload
+    const inputPayload = buildResponsesApiInput(lastUserMessageEntry, settings.knowledgeContent, settings.systemPrompt);
+    if (!inputPayload) {
+        showNotification("Failed to prepare message data for API.", "error");
+        return;
+    }
+    
+    // Build request body
+    const requestBody = {
+        model: "o4-mini",
+        input: inputPayload,
+        stream: true,
+        reasoning: { effort: "high" },
+        ...(previousId && { previous_response_id: previousId }),
+        ...(settings.capabilities.webSearch && { tools: [{ type: "web_search_preview" }] })
+    };
+    
+    await fetchResponsesApi(apiKey, requestBody);
+}
+
+/**
+ * Handle GPT-4 series model completion
+ */
+async function handleGPT4Completion(settings, history, lastUserMessageEntry) {
+    console.log(`Routing to Responses API for ${settings.model} ${settings.capabilities.webSearch ? 'with Web Search' : ''}`);
+    
+    // Check for OpenAI API key
+    const apiKey = state.getApiKey();
+    if (!apiKey) {
+        showNotification("Error: OpenAI API key is required. Please add it in Settings.", 'error');
+        return;
+    }
+    
+    // Get previous response ID for conversation continuity
+    const previousId = state.getPreviousResponseId();
+    
+    // Build input payload
+    const inputPayload = buildResponsesApiInput(lastUserMessageEntry, settings.knowledgeContent, settings.systemPrompt);
+    if (!inputPayload) {
+        showNotification("Failed to prepare message data for API.", "error");
+        return;
+    }
+    
+    // Build request body with the appropriate model
+    const model = settings.model === 'gpt-4.1' ? 'gpt-4.1' :
+                 settings.model === 'gpt-4.5-preview' ? 'gpt-4.5-preview' : 'gpt-4o';
+    
+    const requestBody = {
+        model,
+        input: inputPayload,
+        stream: true,
+        temperature: 0.8,
+        ...(previousId && { previous_response_id: previousId }),
+        ...(settings.capabilities.webSearch && { tools: [{ type: "web_search_preview" }] })
+    };
+    
+    await fetchResponsesApi(apiKey, requestBody);
+}
+
 
 // --- TTS Function ---
 /**
@@ -771,14 +800,23 @@ async function fetchResponsesApi(apiKey, requestBody) {
         if (!streamEnded && aiMessageElement) {
             console.warn("Stream ended unexpectedly (Responses API), finalizing with accumulated content.");
             removeTypingIndicator(); // Ensure removal
-            if (webSearchResults) processWebSearchResults(webSearchResults, aiMessageElement); // Render pending results if any
+            // Finalize main content
             const finalRawText = getAccumulatedRawText();
             const finalHtml = parseFinalHtml();
             finalizeAIMessageContent(aiMessageElement, finalHtml || (webSearchResults ? "" : "[Incomplete Response]"), !!webSearchResults);
-            if (finalRawText) state.addMessageToHistory({ role: "assistant", content: finalRawText });
+
+            // Add potentially incomplete main content to history
+            if (finalRawText || webSearchResults) { // Add if either main or reasoning exists
+                 const existingEntry = state.getChatHistory().find(m => m.role === 'assistant' && m.content === finalRawText);
+                 if (!existingEntry) {
+                     state.addMessageToHistory({ role: "assistant", content: finalRawText });
+                 }
+            }
+            // Setup actions even if incomplete
             setupMessageActions(aiMessageElement, finalRawText);
         }
-        removeTypingIndicator(); // Final ensure removal
+        // Ensure indicator is always removed if it wasn't already
+        removeTypingIndicator();
     }
 }
 

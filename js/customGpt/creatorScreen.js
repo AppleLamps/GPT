@@ -31,8 +31,9 @@ let closeCreatorModalBtn;
 
 // --- State for UI ---
 // Keep track of the files being edited *within the modal*
-let currentEditingKnowledgeFiles = [];
+let currentEditingKnowledgeFiles = []; // Array of {name, type, content, error?}
 let currentEditMode = false; // Track if the modal is for creating or editing
+let isSaving = false; // Prevent double-clicks on save
 
 /**
  * Initializes the Creator Screen module by finding elements and attaching listeners.
@@ -109,34 +110,26 @@ export function initializeCreatorScreen() {
  * @param {object | null} configData - If provided, populates the form for editing. If null, opens in "new" mode.
  */
 export function openCreatorModal(configData = null) {
-    if (!gptCreatorModal) return;
+    if (!gptCreatorModal || isSaving) return; // Prevent opening if already saving
 
     currentEditMode = !!configData; // Set mode based on whether configData exists
+    isSaving = false; // Reset saving flag
 
     if (currentEditMode) {
-        console.log(`Opening creator modal in EDIT mode for: ${configData.name}`);
+        console.log(`Opening creator modal in EDIT mode for: ${configData.name} (ID: ${configData.id})`);
         if (creatorModalTitle) creatorModalTitle.textContent = "Edit Custom GPT";
-        loadConfigIntoForm(configData);
+        loadConfigIntoForm(configData); // Load existing data
         editingGptIdInput.value = configData.id || ''; // Store ID
-        // Show Update button, hide Save? Or just change text of one button?
-        // Let's keep one 'Save' button and handle logic internally for simplicity
-        // if(saveNewGptButton) saveNewGptButton.textContent = "Update";
-        if (saveNewGptButton) saveNewGptButton.style.display = 'inline-block'; // Ensure Save/Update button is visible
-        if (updateGptButton) updateGptButton.style.display = 'none'; // Hide separate update button if exists
-
     } else {
         console.log("Opening creator modal in NEW mode.");
         if (creatorModalTitle) creatorModalTitle.textContent = "Create Custom GPT";
-        loadConfigIntoForm(null); // Clear the form
+        loadConfigIntoForm(null); // Clear the form for new entry
         editingGptIdInput.value = ''; // Clear ID
-        // Ensure Save button is visible and text is correct
-        if (saveNewGptButton) saveNewGptButton.textContent = "Save";
-        if (saveNewGptButton) saveNewGptButton.style.display = 'inline-block';
-        if (updateGptButton) updateGptButton.style.display = 'none';
     }
 
-    updateButtonStates(); // Set initial button states
+    updateButtonStates(); // Set initial button states (including save button text)
     gptCreatorModal.classList.add('visible');
+    gptNameInput?.focus(); // Focus name input on open
 }
 
 /**
@@ -149,6 +142,11 @@ export function closeCreatorModal() {
     currentEditingKnowledgeFiles = [];
     editingGptIdInput.value = '';
     currentEditMode = false;
+    isSaving = false; // Reset saving flag
+    // Clear the file input value in case the modal is reopened without page refresh
+    if (knowledgeUploadInput) {
+        knowledgeUploadInput.value = '';
+    }
     console.log("Creator modal closed.");
 }
 
@@ -159,34 +157,38 @@ export function closeCreatorModal() {
 function loadConfigIntoForm(config) {
     // Ensure elements exist (redundant check, but safe)
     if (!gptNameInput || !gptDescriptionInput || !gptInstructionsInput || !capWebSearchCheckbox || !knowledgeFileListContainer) {
-        console.error("Required form elements not found");
+        console.error("Required form elements not found during loadConfigIntoForm");
         return;
     }
 
     if (config) {
-        console.log("Loading config into form:", config);
+        console.log("Loading config into form:", config.name, `(ID: ${config.id})`);
         // Basic fields
         gptNameInput.value = config.name || '';
         gptDescriptionInput.value = config.description || '';
         gptInstructionsInput.value = config.instructions || '';
-        
+
         // Capabilities
         capWebSearchCheckbox.checked = config.capabilities?.webSearch || false;
         if (capImageGenCheckbox) {
             capImageGenCheckbox.checked = config.capabilities?.imageGeneration || false;
         }
-        
-        // Knowledge files
+        // Load other capabilities...
+
+        // Knowledge files - Create a deep copy for editing
         if (Array.isArray(config.knowledgeFiles)) {
-            currentEditingKnowledgeFiles = config.knowledgeFiles.map(f => ({ ...f }));
-            console.log("Loaded knowledge files:", currentEditingKnowledgeFiles);
+            // Filter out any potential null/undefined entries just in case
+            currentEditingKnowledgeFiles = config.knowledgeFiles
+                .filter(f => f && typeof f === 'object')
+                .map(f => ({ ...f })); // Create copies
+            console.log("Loaded knowledge files for editing:", currentEditingKnowledgeFiles.length);
         } else {
             currentEditingKnowledgeFiles = [];
-            console.log("No knowledge files in config");
+            console.log("No knowledge files in config to load.");
         }
     } else {
         // Clear the form
-        console.log("Clearing form");
+        console.log("Clearing creator form for new entry.");
         gptNameInput.value = '';
         gptDescriptionInput.value = '';
         gptInstructionsInput.value = '';
@@ -194,12 +196,14 @@ function loadConfigIntoForm(config) {
         if (capImageGenCheckbox) {
             capImageGenCheckbox.checked = false;
         }
-        currentEditingKnowledgeFiles = [];
+        // Clear other capabilities...
+        currentEditingKnowledgeFiles = []; // Clear knowledge files state
     }
-    
-    // Always render the knowledge file list
+
+    // Always render the knowledge file list based on currentEditingKnowledgeFiles
     renderKnowledgeFileList();
 }
+
 
 /**
  * Reads the current values from the form fields into a config object structure.
@@ -208,8 +212,8 @@ function loadConfigIntoForm(config) {
  */
 function getConfigFromForm() {
     const config = {
-        // Include ID only if we are updating an existing one
-        id: currentEditMode ? editingGptIdInput.value : undefined,
+        // Include ID only if we are updating an existing one and it's set
+        id: currentEditMode && editingGptIdInput.value ? editingGptIdInput.value : undefined,
         name: gptNameInput?.value.trim() || '',
         description: gptDescriptionInput?.value.trim() || '',
         instructions: gptInstructionsInput?.value.trim() || '',
@@ -218,59 +222,53 @@ function getConfigFromForm() {
             imageGeneration: capImageGenCheckbox?.checked || false,
             // Add other capabilities here...
         },
-        // Use the current state of the files being edited
-        knowledgeFiles: currentEditingKnowledgeFiles.map(f => ({ ...f })) // Store a copy
+        // Use the current state of the files being edited, ensuring no 'error' property is saved
+        knowledgeFiles: currentEditingKnowledgeFiles
+            .filter(f => !f.error) // Only include files without processing errors
+            .map(f => ({ name: f.name, type: f.type, content: f.content })) // Store only necessary data
     };
-    // Remove id property if it's undefined (for creating new)
+    // Remove id property if it's undefined (when creating new)
     if (config.id === undefined) {
         delete config.id;
     }
+    console.log("Config data extracted from form:", config);
     return config;
 }
 
 /**
- * Renders the list of knowledge files in the UI.
+ * Renders the list of knowledge files in the UI based on `currentEditingKnowledgeFiles`.
  */
 function renderKnowledgeFileList() {
     if (!knowledgeFileListContainer) return;
 
     if (!currentEditingKnowledgeFiles.length) {
-        knowledgeFileListContainer.innerHTML = '<div class="no-files-note">No knowledge files attached</div>';
+        knowledgeFileListContainer.innerHTML = '<div class="no-files-note">No knowledge files attached.</div>';
     } else {
         const fileListHTML = currentEditingKnowledgeFiles.map((file, index) => `
-            <div class="knowledge-file-item" data-index="${index}">
+            <div class="knowledge-file-item ${file.error ? 'has-error' : ''}" data-index="${index}" title="${escapeHTML(file.name)}${file.error ? ` - ERROR: ${escapeHTML(file.error)}` : ''}">
+                <span class="file-icon">📄</span>
                 <span class="file-name">${escapeHTML(file.name)}</span>
-                ${file.error ? `<span class="file-error">${escapeHTML(file.error)}</span>` : ''}
-                <button class="remove-knowledge-file" title="Remove file" data-index="${index}">×</button>
+                ${file.error ? `<span class="file-error-badge" title="${escapeHTML(file.error)}">!</span>` : ''}
+                <button class="remove-knowledge-file" title="Remove file" data-index="${index}" aria-label="Remove ${escapeHTML(file.name)}">×</button>
             </div>
         `).join('');
-
         knowledgeFileListContainer.innerHTML = fileListHTML;
     }
 
-    // Update upload button state
+    // Update upload button state and title
+    const limitReached = currentEditingKnowledgeFiles.length >= MAX_KNOWLEDGE_FILES_PER_CONFIG;
     if (knowledgeUploadButton) {
-        const limitReached = currentEditingKnowledgeFiles.length >= MAX_KNOWLEDGE_FILES_PER_CONFIG;
         knowledgeUploadButton.disabled = limitReached;
         knowledgeUploadButton.title = limitReached
             ? `Maximum ${MAX_KNOWLEDGE_FILES_PER_CONFIG} knowledge files reached`
-            : 'Upload Knowledge Files (.txt, .md, .pdf)';
+            : `Upload Knowledge Files (.txt, .md, .pdf, max ${MAX_KNOWLEDGE_FILES_PER_CONFIG} total)`;
     }
+     // Update knowledgeUploadInput accept attribute dynamically (optional but good UX)
+    // if (knowledgeUploadInput) {
+    //     knowledgeUploadInput.accept = ".txt,.md,.pdf,text/plain,text/markdown,application/pdf";
+    // }
 }
 
-/**
- * Handles removing a knowledge file from the list.
- * @param {Event} event - The click event from the remove button.
- */
-function handleRemoveKnowledgeFile(event) {
-    const button = event.target;
-    const index = parseInt(button.dataset.index, 10);
-    
-    if (!isNaN(index) && index >= 0 && index < currentEditingKnowledgeFiles.length) {
-        currentEditingKnowledgeFiles.splice(index, 1);
-        renderKnowledgeFileList();
-    }
-}
 
 /**
  * Callback function after knowledge files have been processed by knowledgeHandler.
@@ -278,60 +276,79 @@ function handleRemoveKnowledgeFile(event) {
  * @param {Array} results Array of processed file results {name, type?, content?, error?}.
  */
 function onKnowledgeFilesProcessed(results) {
-    let filesAdded = 0;
-    let filesErrored = 0;
-    let spaceIssue = false;
+    let filesAddedCount = 0;
+    let filesErroredCount = 0;
+    let limitReachedDuringAdd = false;
 
     results.forEach(result => {
+        // Check limit before attempting to add
         if (currentEditingKnowledgeFiles.length >= MAX_KNOWLEDGE_FILES_PER_CONFIG) {
-            if (!spaceIssue) { // Only log/notify once per batch
-                console.log("Max files reached during processing callback, discarding further results.");
+            if (!limitReachedDuringAdd) { // Notify only once per batch
+                console.warn("Max files reached during processing callback, discarding further results.");
                 showNotification(`Maximum ${MAX_KNOWLEDGE_FILES_PER_CONFIG} files allowed. Some uploads were ignored.`, 'warning');
-                spaceIssue = true;
+                limitReachedDuringAdd = true;
             }
+            filesErroredCount++; // Count files skipped due to limit as errors for feedback
             return; // Stop adding if max is reached
         }
 
-        // Check if already exists (double check)
+        // Check if already exists (double check - handleKnowledgeUpload should prevent this, but belt-and-suspenders)
         if (currentEditingKnowledgeFiles.some(f => f.name === result.name)) {
             console.warn(`Knowledge file "${result.name}" already exists in list, skipping add.`);
+            // Optionally notify user again? Or rely on handleKnowledgeUpload's notification?
+            // showNotification(`File "${result.name}" was already in the list.`, 'info');
             return;
         }
 
         if (result.error) {
-            filesErrored++;
-            // Add the file with error info to the list so user sees it failed
-            currentEditingKnowledgeFiles.push({ name: result.name, error: result.error, content: null });
-            showNotification(`Error processing "${result.name}": ${result.error}`, 'error', 5000);
+            filesErroredCount++;
+            // Add the file with error info to the list so user sees it failed and can remove it
+            currentEditingKnowledgeFiles.push({
+                name: result.name,
+                error: result.error, // Store the error message
+                content: null,       // No content available
+                type: result.type || 'unknown'
+            });
+            // Notification is handled by knowledgeHandler, but maybe show a summary later
         } else if (result.content !== undefined) {
-            filesAdded++;
+            filesAddedCount++;
             // Add the successfully processed file
             currentEditingKnowledgeFiles.push({
                 name: result.name,
-                type: result.type || 'unknown', // Add type if available
+                type: result.type || 'unknown', // Ensure type is stored
                 content: result.content,
-                error: null
+                error: null // Explicitly set error to null
             });
+        } else {
+            // Should not happen if processKnowledgeFile always returns content or error
+            console.warn("Processed file result is missing both content and error:", result.name);
+            filesErroredCount++;
+             currentEditingKnowledgeFiles.push({ name: result.name, error: "Unknown processing issue", content: null, type: 'unknown' });
         }
     });
 
-    if (filesAdded > 0) {
-        console.log(`${filesAdded} knowledge file(s) processed and added to modal edit list.`);
+    if (filesAddedCount > 0) {
+        console.log(`${filesAddedCount} knowledge file(s) processed and added to modal edit list.`);
+        showNotification(`${filesAddedCount} file(s) added successfully.`, 'success', 2000);
     }
-    if (filesErrored > 0) {
-        console.warn(`${filesErrored} knowledge file(s) had processing errors.`);
+    if (filesErroredCount > 0 && !limitReachedDuringAdd) { // Don't show error count if limit was the main issue reported
+        console.warn(`${filesErroredCount} knowledge file(s) had processing errors or were skipped.`);
+         showNotification(`${filesErroredCount} file(s) could not be added. See list for details.`, 'warning');
     }
 
     renderKnowledgeFileList(); // Update UI list
-    updateButtonStates(); // Enable save buttons etc.
+    updateButtonStates(); // Update button states (e.g., disable upload if limit reached)
 }
+
 
 // --- Button Actions ---
 
 /**
- * Handles the unified "Save" / "Update" button click.
+ * Handles the unified "Save" / "Update" button click. Now async.
  */
-function handleSaveOrUpdateGpt() {
+async function handleSaveOrUpdateGpt() { // <<< Make async
+    if (isSaving) return; // Prevent double-clicks
+
     const config = getConfigFromForm(); // Gets data, includes ID if in edit mode
 
     if (!config.name) {
@@ -340,58 +357,107 @@ function handleSaveOrUpdateGpt() {
         return;
     }
 
-    // gptStore.saveConfig handles create vs update based on presence of config.id
-    const savedMeta = gptStore.saveConfig(config);
+    // Disable button and show loading state
+    isSaving = true;
+    updateButtonStates(); // Reflect saving state in button
 
-    if (savedMeta) {
-        const action = currentEditMode ? "updated" : "saved";
-        showNotification(`Custom GPT "${savedMeta.name}" ${action}.`, "success");
+    try {
+        // gptStore.saveConfig handles create vs update based on presence of config.id
+        const savedMeta = await gptStore.saveConfig(config); // <<< Await async call
 
-        // Reload the full config to ensure we have the ID and potentially cleaned data
-        const fullConfig = gptStore.loadConfig(savedMeta.id);
-        if (fullConfig) {
-            // If the saved/updated GPT was the one being created/edited,
-            // make it the active one.
-            state.setActiveCustomGptConfig(fullConfig); // Make it active
-            updateActiveGptDisplay(); // Update header
-            // Maybe clear chat history here?
+        if (savedMeta && savedMeta.id) {
+            const action = currentEditMode ? "updated" : "saved";
+            console.log(`Custom GPT "${savedMeta.name}" ${action} successfully. ID: ${savedMeta.id}`);
+            // Notification is shown by saveConfig
+
+            // Reload the full config to ensure we have the final data
+            const fullConfig = await gptStore.loadConfig(savedMeta.id); // <<< Await async call
+            if (fullConfig) {
+                // If the saved/updated GPT was the one being created/edited,
+                // or if it's a new one, make it the active one.
+                console.log(`Setting active GPT to ${action} config: ${fullConfig.name}`);
+                state.setActiveCustomGptConfig(fullConfig); // Make it active
+                updateActiveGptDisplay(); // Update header display
+                // Consider if chat history should be cleared here
+                // state.clearChatHistory(); // Example if needed
+            } else {
+                console.warn(`Failed to reload the config (ID: ${savedMeta.id}) after saving, cannot set as active.`);
+                // Might still want to clear active config if the previous one was deleted/invalid?
+                state.setActiveCustomGptConfig(null);
+                updateActiveGptDisplay();
+            }
+
+            closeCreatorModal(); // Close modal on success
+            renderCustomGptList(); // Update sidebar list
+
+        } else {
+            // saveConfig shows error notification on failure
+            console.error(`Failed to ${currentEditMode ? 'update' : 'save'} config. saveConfig returned null.`);
+            // Keep modal open for user to fix potential issues (like size limit)
         }
-
-        closeCreatorModal(); // Close modal on success
-        renderCustomGptList(); // Update sidebar list
-
-    } else {
-        // saveConfig shows error notification on failure
-        console.error(`Failed to ${currentEditMode ? 'update' : 'save'} config.`);
-        // Keep modal open for user to fix potential issues (like size limit)
-    }
-}
-
-/** Optional: Clears the form fields within the creator modal */
-function handleClearForm() {
-    if (confirm("Are you sure you want to clear the form? Any unsaved changes will be lost.")) {
-        loadConfigIntoForm(null); // Clears form fields and knowledge list
-        // If in edit mode, maybe revert to create mode? Or just clear? Let's just clear.
+    } catch (error) {
+        // Catch any unexpected errors during the save/load process
+        console.error(`Unexpected error during ${currentEditMode ? 'update' : 'save'} operation:`, error);
+        showNotification(`An unexpected error occurred. Please try again.`, "error");
+    } finally {
+        // Re-enable button regardless of success/failure
+        isSaving = false;
         updateButtonStates();
     }
 }
 
+
+/** Optional: Clears the form fields within the creator modal */
+function handleClearForm() {
+    if (isSaving) return; // Don't clear while saving
+
+    // Check if form is actually dirty (more complex check might be needed)
+    const isDirty = gptNameInput?.value || gptDescriptionInput?.value || gptInstructionsInput?.value || currentEditingKnowledgeFiles.length > 0;
+
+    if (!isDirty) {
+        showNotification("Form is already clear.", "info");
+        return;
+    }
+
+    if (confirm("Are you sure you want to clear the form? Any unsaved changes will be lost.")) {
+        loadConfigIntoForm(null); // Clears form fields and knowledge list state
+        // Reset mode to 'new' if cleared? Or keep edit mode but with blank fields?
+        // Let's reset to 'new' mode for clarity if they clear while editing.
+        if (currentEditMode) {
+             currentEditMode = false;
+             editingGptIdInput.value = '';
+             if (creatorModalTitle) creatorModalTitle.textContent = "Create Custom GPT";
+        }
+        updateButtonStates(); // Update button text/state
+        showNotification("Form cleared.", "success", 2000);
+        gptNameInput?.focus();
+    }
+}
+
 /**
- * Updates the enabled/disabled state of buttons based on form state.
+ * Updates the enabled/disabled state and text of buttons based on form state and saving status.
  */
 function updateButtonStates() {
     const formHasName = gptNameInput?.value.trim() !== '';
+    const canSaveFolder = saveNewGptButton; // Check if the button exists
 
-    // Unified Save/Update button logic
-    if (saveNewGptButton) {
-        saveNewGptButton.disabled = !formHasName;
-        saveNewGptButton.textContent = currentEditMode ? "Update" : "Save";
+    if (canSaveFolder) {
+        saveNewGptButton.disabled = !formHasName || isSaving;
+        if (isSaving) {
+            saveNewGptButton.textContent = currentEditMode ? "Updating..." : "Saving...";
+            saveNewGptButton.classList.add('loading'); // Add a class for potential spinner styles
+        } else {
+            saveNewGptButton.textContent = currentEditMode ? "Update" : "Save";
+            saveNewGptButton.classList.remove('loading');
+        }
     }
 
-    // If using separate buttons:
-    // if (saveNewGptButton) saveNewGptButton.disabled = !formHasName || currentEditMode;
-    // if (updateGptButton) updateGptButton.disabled = !formHasName || !currentEditMode;
+    // Clear button state
+    if (clearGptFormButton) {
+        // Disable clear if saving, otherwise enable
+        clearGptFormButton.disabled = isSaving;
+    }
 
-    // Clear button always enabled if present
-    // if (clearGptFormButton) clearGptFormButton.disabled = false;
+    // Upload button state (handled in renderKnowledgeFileList)
+    renderKnowledgeFileList(); // Call this to ensure upload button state is also updated
 }
