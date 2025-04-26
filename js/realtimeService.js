@@ -45,8 +45,10 @@ export async function initializeSession() {
             body: {} // Add empty body as required by Supabase invoke with POST
         });
 
-        if (sessionError || !sessionData?.ephemeral_key || !sessionData?.session_id) {
-            throw new Error(`Failed to get session key: ${sessionError?.message || 'Invalid response'}`);
+        // Add more robust check for both error and expected data properties
+        if (sessionError || !sessionData || !sessionData.ephemeral_key || !sessionData.session_id) {
+             console.error("Supabase function invocation error or invalid data:", { sessionError, sessionData });
+             throw new Error(`Failed to get session key: ${sessionError?.message || 'Invalid or missing session data returned from function.'}`);
         }
         const { ephemeral_key, session_id } = sessionData;
         // Update state directly
