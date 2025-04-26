@@ -65,6 +65,11 @@ let liveButton = null; // <-- Add Live Button element
 // Transcript Display
 let liveTranscriptDisplay = null; // <-- Add Transcript Display element
 
+// Realtime Popup Elements
+let realtimeStatusPopup = null;
+let realtimeStatusText = null;
+let endLiveSessionBtn = null;
+
 // --- >>> Mobile Elements <<< ---
 // Get elements within the initialization function to ensure DOM is ready
 let mobileOptionsToggleBtn = null;
@@ -860,42 +865,81 @@ function observeInputContainerResize() {
 
 // --- Realtime UI Update ---
 /**
- * Updates the Live button and transcript display based on realtime state.
+ * Updates the Live button, transcript display, and realtime status popup based on realtime state.
  */
 function updateRealtimeUI() {
-    if (!liveButton || !liveTranscriptDisplay) return;
+    // Update Live Button and Transcript Display (Existing Logic)
+    if (liveButton && liveTranscriptDisplay) {
+        const isActive = state.isRealtimeSessionActive;
+        const status = state.realtimeSessionStatus;
+        const transcript = state.currentRealtimeTranscript;
+
+        liveButton.classList.toggle('active', isActive);
+        liveButton.classList.remove('connecting', 'error-state'); // Clear dynamic states
+
+        let title = 'Start Live Conversation';
+        let icon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>`; // Default Mic icon
+
+        if (isActive) {
+            title = 'Stop Live Conversation';
+            icon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic-off"><line x1="16" x2="16" y1="3" y2="8"/><line x1="8" x2="8" y1="3" y2="8"/><line x1="12" x2="12" y1="17" y2="22"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 12a3 3 0 0 0-3 3v2a3 3 0 0 0 6 0v-2a3 3 0 0 0-3-3Z"/><line x1="1" x2="23" y1="1" y2="23"/></svg>`; // Mic Off icon
+
+            if (status === 'connecting') {
+                liveButton.classList.add('connecting');
+                title = 'Connecting Live Session...';
+                // Optional: Add a spinner or different icon for connecting
+            } else if (status === 'error') {
+                liveButton.classList.add('error-state');
+                title = 'Live Session Error - Click to Stop';
+                // Optional: Add an error icon
+            }
+        }
+
+        liveButton.title = title;
+        liveButton.innerHTML = icon; // Update icon
+
+        // Update transcript display
+        liveTranscriptDisplay.textContent = transcript;
+        liveTranscriptDisplay.style.display = isActive && transcript ? 'inline' : 'none'; // Show only when active and has text
+    }
+
+    // --- NEW: Update Realtime Status Popup ---
+    if (!realtimeStatusPopup || !realtimeStatusText) return; // Exit if popup elements don't exist
 
     const isActive = state.isRealtimeSessionActive;
     const status = state.realtimeSessionStatus;
     const transcript = state.currentRealtimeTranscript;
 
-    liveButton.classList.toggle('active', isActive);
-    liveButton.classList.remove('connecting', 'error-state'); // Clear dynamic states
+    // Show/Hide Popup
+    realtimeStatusPopup.classList.toggle('visible', isActive);
 
-    let title = 'Start Live Conversation';
-    let icon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>`; // Default Mic icon
+    // Update Text and State Classes
+    realtimeStatusPopup.classList.remove('connecting', 'active', 'error-state'); // Clear previous states
 
     if (isActive) {
-        title = 'Stop Live Conversation';
-        icon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic-off"><line x1="16" x2="16" y1="3" y2="8"/><line x1="8" x2="8" y1="3" y2="8"/><line x1="12" x2="12" y1="17" y2="22"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 12a3 3 0 0 0-3 3v2a3 3 0 0 0 6 0v-2a3 3 0 0 0-3-3Z"/><line x1="1" x2="23" y1="1" y2="23"/></svg>`; // Mic Off icon
-
-        if (status === 'connecting') {
-            liveButton.classList.add('connecting');
-            title = 'Connecting Live Session...';
-            // Optional: Add a spinner or different icon for connecting
-        } else if (status === 'error') {
-            liveButton.classList.add('error-state');
-            title = 'Live Session Error - Click to Stop';
-            // Optional: Add an error icon
+        switch (status) {
+            case 'connecting':
+                realtimeStatusText.textContent = 'Connecting...';
+                realtimeStatusPopup.classList.add('connecting');
+                break;
+            case 'active':
+                // Show transcript if available, otherwise "Listening..."
+                const transcript = state.currentRealtimeTranscript;
+                realtimeStatusText.textContent = transcript ? `Transcript: "${transcript}"` : "Listening...";
+                realtimeStatusPopup.classList.add('active');
+                break;
+            case 'error':
+                realtimeStatusText.textContent = 'Connection Error';
+                realtimeStatusPopup.classList.add('error-state');
+                break;
+            default:
+                realtimeStatusText.textContent = 'Live'; // Default active text
+                realtimeStatusPopup.classList.add('active');
         }
+    } else {
+        // Reset text when not active (though it should be hidden)
+        realtimeStatusText.textContent = 'Connecting...';
     }
-
-    liveButton.title = title;
-    liveButton.innerHTML = icon; // Update icon
-
-    // Update transcript display
-    liveTranscriptDisplay.textContent = transcript;
-    liveTranscriptDisplay.style.display = isActive && transcript ? 'inline' : 'none'; // Show only when active and has text
 }
 
 
@@ -966,6 +1010,11 @@ export function initializeChatInput() {
     imageGenButton = document.getElementById('imageGenButton');
     liveButton = document.getElementById('liveButton'); // <-- Get Live Button
     liveTranscriptDisplay = document.getElementById('liveTranscript'); // <-- Get Transcript Display
+    
+    // Realtime Popup Elements
+    realtimeStatusPopup = document.getElementById('realtime-status-popup');
+    realtimeStatusText = document.getElementById('realtime-status-text');
+    endLiveSessionBtn = document.getElementById('endLiveSessionBtn');
 
     // --- >>> Get Mobile Elements <<< ---
     mobileOptionsToggleBtn = document.getElementById('mobileOptionsToggleBtn');
@@ -1072,9 +1121,19 @@ export function initializeChatInput() {
             closeMobileOptions();
         });
     }
+    // Add listener for the new End Live Session button
+    if (endLiveSessionBtn) {
+        endLiveSessionBtn.addEventListener('click', () => {
+            console.log("End Live Session button clicked.");
+            realtimeService.terminateSession();
+            // updateRealtimeUI will be called via the state update event listener
+        });
+    } else {
+        console.warn("End Live Session button ('endLiveSessionBtn') not found.");
+    }
 
     // Make sure all toolbar buttons close the popup when clicked
-    document.querySelectorAll('.bottom-toolbar .tool-button').forEach(button => {
+    document.querySelectorAll('.bottom-toolbar .tool-button, .bottom-toolbar .circle-button').forEach(button => { // Include circle buttons
         button.addEventListener('click', () => {
             closeMobileOptions();
         });
