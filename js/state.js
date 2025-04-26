@@ -38,6 +38,29 @@ let realtimeRemoteAudioStream = null; // MediaStream from AI
 let realtimeEphemeralKey = null; // Ephemeral key for the session
 let currentRealtimeTranscript = ''; // Live transcript
 
+// --- Getters and Setters for Real-time State ---
+export function getIsRealtimeSessionActive() { return isRealtimeSessionActive; }
+export function setIsRealtimeSessionActive(value) { isRealtimeSessionActive = value; }
+
+export function getRealtimeSessionStatus() { return realtimeSessionStatus; }
+export function setRealtimeSessionStatus(value) { realtimeSessionStatus = value; }
+
+export function getRealtimeConnection() { return realtimeConnection; }
+export function setRealtimeConnection(value) { realtimeConnection = value; }
+
+export function getRealtimeDataChannel() { return realtimeDataChannel; }
+export function setRealtimeDataChannel(value) { realtimeDataChannel = value; }
+
+export function getRealtimeRemoteAudioStream() { return realtimeRemoteAudioStream; }
+export function setRealtimeRemoteAudioStream(value) { realtimeRemoteAudioStream = value; }
+
+export function getRealtimeEphemeralKey() { return realtimeEphemeralKey; }
+export function setRealtimeEphemeralKey(value) { realtimeEphemeralKey = value; }
+
+export function getCurrentRealtimeTranscript() { return currentRealtimeTranscript; }
+export function setCurrentRealtimeTranscript(value) { currentRealtimeTranscript = value; }
+
+
 // --- Chat History ---
 export function getChatHistory() {
     return [...chatHistory]; // Return a copy
