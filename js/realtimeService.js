@@ -42,7 +42,7 @@ export async function initializeSession() {
         console.log("Fetching ephemeral key and session ID from 'talk' function...");
         const { data: sessionData, error: sessionError } = await supabase.functions.invoke('talk', { // <-- Use deployed function name 'talk'
             method: 'POST', // Ensure POST method is used if required by function
-            // body: {} // Add empty body if needed, or specific params
+            body: {} // Add empty body as required by Supabase invoke with POST
         });
 
         if (sessionError || !sessionData?.ephemeral_key || !sessionData?.session_id) {
