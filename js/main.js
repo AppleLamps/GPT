@@ -11,6 +11,7 @@ import { initializeCreatorScreen } from './customGpt/creatorScreen.js';
 import { initializeNotificationSystem } from './notificationHelper.js';
 import { initializeAuthModal, showAuthModal } from './components/authModal.js';
 import { initializeAuth } from './authService.js';
+import { clearRealtimeState } from './state.js'; // Import the clear function
 
 /**
  * Check if user is logged in and prompt for login if not
@@ -39,6 +40,11 @@ async function checkAndPromptLogin() {
  */
 async function initializeApp() {
     console.log("Initializing App...");
+
+    // --- ADDED: Ensure clean real-time state on load ---
+    clearRealtimeState(); 
+    console.log("Initial real-time state explicitly cleared.");
+    // --- END ADDED ---
     
     // Initialize notification system first so it's available to other components
     initializeNotificationSystem();
