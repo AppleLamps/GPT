@@ -53,7 +53,7 @@ let imageButton = null;
 // File Elements
 let filePreviewContainer = null;
 let fileInputElement = null;
-let addButton = null; 
+let addButton = null;
 
 // Toolbar buttons
 let searchButton = null;
@@ -156,7 +156,7 @@ export function renderFilePreviews() {
     const files = state.getAttachedFiles();
     filePreviewContainer.innerHTML = ''; // Clear existing previews
     console.log(`Rendering ${files.length} file previews.`); // Debug log
-    
+
     files.forEach(file => {
         const extension = utils.getFileExtension(file.name);
         let iconClass = 'unknown'; // Default icon class
@@ -301,7 +301,7 @@ function handleOutsideClickForMobileOptions(event) {
  */
 function closeMobileOptions() {
     if (!bottomToolbarElement || !mobileOptionsToggleBtn) return;
-    
+
     if (bottomToolbarElement.classList.contains('mobile-visible')) {
         bottomToolbarElement.classList.remove('mobile-visible');
         // Reset '+' icon state
@@ -576,9 +576,9 @@ export function updateInputUIForModel(activeGpt) { // Pass activeGpt config obje
         } else if (state.getIsImageGenerationMode() && (isGpt4o || isGpt41 || isGpt45Preview)) {
              messageInputElement.placeholder = "Enter a prompt to generate an image...";
         } else {
-            const modelName = isGemini ? "Gemini" : 
-                            (isGpt4o ? "ChatGPT" : 
-                            (isGpt41 ? "ChatGPT" : 
+            const modelName = isGemini ? "Gemini" :
+                            (isGpt4o ? "ChatGPT" :
+                            (isGpt41 ? "ChatGPT" :
                             (isGpt45Preview ? "ChatGPT" : "Model")));
             messageInputElement.placeholder = `Message ${modelName}`;
         }
@@ -848,7 +848,7 @@ function observeInputContainerResize() {
             if (height) {
                 document.documentElement.style.setProperty('--dynamic-input-area-height', `${height}px`);
                 // Optional: trigger a resize event if other components need to react
-                // window.dispatchEvent(new Event('resize')); 
+                // window.dispatchEvent(new Event('resize'));
             }
         }
     });
@@ -870,9 +870,9 @@ function observeInputContainerResize() {
 function updateRealtimeUI() {
     // Update Live Button and Transcript Display (Existing Logic)
     if (liveButton && liveTranscriptDisplay) {
-        const isActive = state.isRealtimeSessionActive;
-        const status = state.realtimeSessionStatus;
-        const transcript = state.currentRealtimeTranscript;
+        const isActive = state.getIsRealtimeSessionActive(); // Use getter
+        const status = state.getRealtimeSessionStatus(); // Use getter
+        const transcript = state.getCurrentRealtimeTranscript(); // Use getter
 
         liveButton.classList.toggle('active', isActive);
         liveButton.classList.remove('connecting', 'error-state'); // Clear dynamic states
@@ -903,20 +903,23 @@ function updateRealtimeUI() {
         liveTranscriptDisplay.style.display = isActive && transcript ? 'inline' : 'none'; // Show only when active and has text
     }
 
-    // --- NEW: Update Realtime Status Popup ---
+    // --- Update Realtime Status Popup ---
     if (!realtimeStatusPopup || !realtimeStatusText) return; // Exit if popup elements don't exist
 
-    const isActive = state.isRealtimeSessionActive;
-    const status = state.realtimeSessionStatus;
-    const transcript = state.currentRealtimeTranscript;
+    const isActive = state.getIsRealtimeSessionActive(); // Use getter
+    const status = state.getRealtimeSessionStatus(); // Use getter
 
-    // Show/Hide Popup
-    realtimeStatusPopup.classList.toggle('visible', isActive);
+    // --- MODIFIED VISIBILITY LOGIC ---
+    // Hide if status is 'inactive', otherwise show if isActive is true
+    const shouldBeVisible = status !== 'inactive' && isActive;
+    realtimeStatusPopup.classList.toggle('visible', shouldBeVisible);
+    // --- END MODIFICATION ---
 
-    // Update Text and State Classes
-    realtimeStatusPopup.classList.remove('connecting', 'active', 'error-state'); // Clear previous states
 
-    if (isActive) {
+    // Update Text and State Classes (only if visible)
+    if (shouldBeVisible) { // Only update text/classes if it's meant to be shown
+        realtimeStatusPopup.classList.remove('connecting', 'active', 'error-state'); // Clear previous states
+
         switch (status) {
             case 'connecting':
                 realtimeStatusText.textContent = 'Connecting...';
@@ -932,13 +935,12 @@ function updateRealtimeUI() {
                 realtimeStatusPopup.classList.add('error-state');
                 break;
             default:
-                realtimeStatusText.textContent = 'Live'; // Default active text
+                // This case might indicate an unexpected status while active, treat as active
+                realtimeStatusText.textContent = 'Live Session Active'; // Default active text
                 realtimeStatusPopup.classList.add('active');
         }
-    } else {
-        // Reset text when not active (though it should be hidden)
-        realtimeStatusText.textContent = 'Connecting...';
     }
+    // No need for the 'else' block that resets text, as it's hidden anyway
 }
 
 
@@ -950,7 +952,7 @@ async function handleLiveToggle() {
     if (!liveButton) return;
     liveButton.disabled = true; // Prevent double-clicks
 
-    if (state.isRealtimeSessionActive) {
+    if (state.getIsRealtimeSessionActive()) { // Use getter
         await realtimeService.terminateSession();
     } else {
         // Check for API key before starting
@@ -996,12 +998,12 @@ export function initializeChatInput() {
     imagePreviewContainer = document.getElementById('imagePreview');
     imageInputElement = document.getElementById('imageInput');
     imageButton = document.getElementById('imageButton');
-    
+
     // File Elements
     filePreviewContainer = document.getElementById('filePreview');
     fileInputElement = document.getElementById('fileInput');
     addButton = document.getElementById('addButton');
-    
+
     // Toolbar buttons
     searchButton = document.getElementById('searchButton');
     researchButton = document.getElementById('researchButton');
@@ -1009,7 +1011,7 @@ export function initializeChatInput() {
     imageGenButton = document.getElementById('imageGenButton');
     liveButton = document.getElementById('liveButton'); // <-- Get Live Button
     liveTranscriptDisplay = document.getElementById('liveTranscript'); // <-- Get Transcript Display
-    
+
     // Realtime Popup Elements
     realtimeStatusPopup = document.getElementById('realtime-status-popup');
     realtimeStatusText = document.getElementById('realtime-status-text');
@@ -1018,9 +1020,9 @@ export function initializeChatInput() {
     // --- >>> Get Mobile Elements <<< ---
     mobileOptionsToggleBtn = document.getElementById('mobileOptionsToggleBtn');
     bottomToolbarElement = document.querySelector('.input-container .bottom-toolbar');
-    
+
     // Debug element availability
-    console.log("DOM Elements Status:", { 
+    console.log("DOM Elements Status:", {
         imagePreviewContainer: !!imagePreviewContainer,
         imageInputElement: !!imageInputElement,
         imageButton: !!imageButton,
@@ -1054,19 +1056,19 @@ export function initializeChatInput() {
             }
             closeMobileOptions();
         });
-        
+
         imageInputElement.addEventListener('change', handleImageUpload);
         console.log("Image upload handlers successfully attached");
-    } else { 
-        console.error(`Image elements missing: button=${!!imageButton}, input=${!!imageInputElement}`); 
+    } else {
+        console.error(`Image elements missing: button=${!!imageButton}, input=${!!imageInputElement}`);
     }
 
     // File Upload
     if (addButton && fileInputElement) {
         addButton.addEventListener('click', triggerFileInput);
         fileInputElement.addEventListener('change', handleFileSelection);
-    } else { 
-        console.error(`File upload elements missing: button=${!!addButton}, input=${!!fileInputElement}`); 
+    } else {
+        console.error(`File upload elements missing: button=${!!addButton}, input=${!!fileInputElement}`);
     }
 
     // --- >>> Mobile Toggle Button Listener <<< ---
@@ -1089,26 +1091,26 @@ export function initializeChatInput() {
     }
 
     // Original Toolbar Buttons (listeners needed for desktop & when popup is visible)
-    if (searchButton) { 
+    if (searchButton) {
         searchButton.addEventListener('click', (e) => {
             handleSearchToggle(e);
             closeMobileOptions();
-        }); 
+        });
     }
-    if (researchButton) { 
+    if (researchButton) {
         researchButton.addEventListener('click', (e) => {
             handleDeepResearchClick(e);
             closeMobileOptions();
-        }); 
+        });
     }
-    if (voiceButton) { 
+    if (voiceButton) {
         voiceButton.addEventListener('click', (e) => {
             e.preventDefault();
             startVoiceRecognition(); // Actual working handler
             closeMobileOptions();
-        }); 
+        });
     }
-    if (imageGenButton) { 
+    if (imageGenButton) {
         imageGenButton.addEventListener('click', (e) => {
             handleImageGenToggle(e);
             closeMobileOptions();
@@ -1137,19 +1139,23 @@ export function initializeChatInput() {
             closeMobileOptions();
         });
     });
-    
+
     // --- >>> Start Observing Input Container Resize <<< ---
-    observeInputContainerResize(); 
+    observeInputContainerResize();
     // --- >>> Start Observing Input Container Resize <<< ---
 
     // Initial UI updates
     adjustTextAreaHeight(); // Initial height adjustment for textarea
     renderFilePreviews();   // Render any initial file previews
     renderImagePreview(); // Render initial image preview if exists
-    
-    // Update button states initially
+
     // Update button states initially
     updateToolbarButtons();
+
+    // --- DEBUG: Log state right before initial UI update ---
+    console.log(`DEBUG: Initial state before updateRealtimeUI: isActive=${state.getIsRealtimeSessionActive()}, status=${state.getRealtimeSessionStatus()}`);
+    // --- END DEBUG ---
+
     updateRealtimeUI(); // <-- Initial UI update for realtime elements
 
     // Listen for state updates from the realtime service
