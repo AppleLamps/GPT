@@ -3054,31 +3054,26 @@ body.dark-mode #liveButton.error-state {
 
 /* Realtime Status Popup */
 .realtime-popup {
-    display: none;
-    /* Hidden by default */
-    position: absolute;
-    /* Position relative to parent (.input-container) */
-    bottom: calc(100% + 10px);
-    /* Position above the input container */
+    display: none; /* Hidden by default */
+    position: absolute; /* Position relative to parent (.input-container) */
+    bottom: calc(100% + 10px); /* Position above the input container */
     left: 50%;
     transform: translateX(-50%);
-    background-color: var(--background-secondary);
-    border: 1px solid var(--border-primary);
-    border-radius: 8px;
-    padding: 10px 15px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    /* --- Style Changes --- */
+    background-color: var(--background-primary); /* Use primary background */
+    border: 1px solid var(--border-secondary); /* Softer border */
+    border-radius: 16px; /* More rounded */
+    padding: 6px 12px; /* Reduced padding */
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1); /* Softer shadow */
+    /* --- End Style Changes --- */
     z-index: 10;
-    /* display: flex; */
-    /* Set by .visible class */
     align-items: center;
-    gap: 15px;
+    gap: 10px; /* Reduced gap */
     opacity: 0;
     transition: opacity 0.3s ease, bottom 0.3s ease;
     white-space: nowrap;
-    pointer-events: none;
-    /* Allow clicks through when hidden */
-    max-width: 90%;
-    /* Prevent excessive width */
+    pointer-events: none; /* Allow clicks through when hidden */
+    max-width: 90%; /* Prevent excessive width */
 }
 
 .realtime-popup.visible {
@@ -3090,32 +3085,35 @@ body.dark-mode #liveButton.error-state {
 }
 
 #realtime-status-text {
-    font-size: 14px;
-    color: var(--text-primary);
+    font-size: 13px; /* Slightly smaller text */
+    color: var(--text-secondary); /* Muted color */
     flex-grow: 1;
     overflow: hidden;
     text-overflow: ellipsis;
-    /* max-width: 300px; */
-    /* Removed fixed max-width */
 }
 
 .end-live-button {
-    background-color: var(--error-color);
-    color: white;
+    /* --- Style Changes --- */
+    background: none; /* Remove background */
+    color: var(--text-muted); /* Muted color */
     border: none;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 13px;
+    border-radius: 4px;
+    padding: 4px 8px; /* Adjust padding */
+    font-size: 12px; /* Smaller font */
     font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease;
     flex-shrink: 0;
-    /* Prevent button from shrinking */
+    text-decoration: underline; /* Indicate it's clickable */
+    /* --- End Style Changes --- */
 }
 
 .end-live-button:hover {
-    background-color: #c4302b;
-    /* Darker red */
+    /* --- Style Changes --- */
+    color: var(--error-color); /* Red on hover */
+    background-color: rgba(244, 67, 54, 0.1); /* Light red background on hover */
+    text-decoration: none;
+    /* --- End Style Changes --- */
 }
 
 /* State Classes for Popup */
@@ -3141,13 +3139,22 @@ body.dark-mode #liveButton.error-state {
 
 /* Dark Mode Popup */
 body.dark-mode .realtime-popup {
-    background-color: var(--dark-background-secondary);
-    border-color: var(--dark-border-primary);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    background-color: var(--dark-background-secondary); /* Use secondary */
+    border-color: var(--dark-border-secondary);
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
 }
 
 body.dark-mode #realtime-status-text {
-    color: var(--dark-text-primary);
+    color: var(--dark-text-secondary);
+}
+
+body.dark-mode .end-live-button {
+    color: var(--dark-text-muted);
+}
+
+body.dark-mode .end-live-button:hover {
+    color: var(--error-color);
+    background-color: rgba(244, 67, 54, 0.2);
 }
 
 body.dark-mode .realtime-popup.connecting #realtime-status-text {
@@ -3166,46 +3173,31 @@ body.dark-mode .realtime-popup.error-state #realtime-status-text {
     color: var(--error-color);
 }
 
-/* --- CORRECTED Mobile Adjustments for Popup --- */
+/* Mobile Adjustments for Popup */
 @media (max-width: 600px) {
     .realtime-popup {
-        /* Position relative to input-container, centered above */
         width: calc(100% - 2rem);
-        /* Use most of the width, leave some margin */
         left: 50%;
         transform: translateX(-50%);
         bottom: calc(100% + 5px);
-        /* Position it 5px above the input container */
         top: auto;
-        /* Ensure top is not interfering */
-
-        /* Adjust padding and gap for smaller screens */
-        gap: 10px;
-        padding: 8px 12px;
+        gap: 8px; /* Adjusted gap */
+        padding: 6px 10px; /* Adjusted padding */
         white-space: normal;
-        /* Allow text wrapping */
     }
 
-    /* .realtime-popup.visible doesn't need specific mobile overrides */
-    /* if the default positioning above works */
-
     #realtime-status-text {
-        font-size: 13px;
+        font-size: 12px; /* Adjusted size */
         max-width: none;
-        /* Allow text to wrap */
         white-space: normal;
-        /* Explicitly allow wrapping */
         text-align: center;
-        /* Center text if it wraps */
         flex-grow: 1;
-        /* Allow text to take available space */
     }
 
     .end-live-button {
-        padding: 5px 10px;
-        font-size: 12px;
+        padding: 4px 8px; /* Adjusted padding */
+        font-size: 11px; /* Adjusted size */
         flex-shrink: 0;
-        /* Prevent button shrinking */
     }
 }
 
