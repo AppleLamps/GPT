@@ -34,10 +34,10 @@ class SettingsModal {
         this.tabContents = document.querySelectorAll('.settings-tab-content');
         this.apiKeyInputs = document.querySelectorAll('.api-key-input');
         this.modelSelect = document.getElementById('modelSelect');
-        this.ttsInstructionsInput = document.getElementById('ttsInstructions');
-        this.sandboxToggle = document.getElementById('sandboxToggle');
-        this.saveButton = document.getElementById('saveSettingsButton');
-        this.closeButton = document.querySelector('.modal-close');
+        this.ttsInstructionsInput = document.getElementById('ttsInstructionsInput'); // Corrected ID based on top-level selection
+        this.sandboxToggle = document.getElementById('enableHtmlSandbox'); // Corrected ID based on top-level selection
+        this.saveButton = document.getElementById('saveSettingsBtn'); // Use the correct ID
+        this.closeButton = document.getElementById('closeModalBtn'); // Use the correct ID
 
         // Bind methods to maintain 'this' context
         this.handleTabClick = this.handleTabClick.bind(this);
@@ -306,22 +306,20 @@ function loadGeneralSettingsIntoForm() {
  * <<< This is the correct, exported version >>>
  */
 export function openSettings() {
-    loadGeneralSettingsIntoForm(); // Load API Key, Default Model, TTS Instructions
-    updateUserInfoInSettings(); // Update user info section
-
-    // Optional: Refresh Custom GPT state if applicable (though creator has its own modal)
-    // prepareGptFormOnModalOpen(); // Example placeholder
-
-    toggleSettingsModal(true);
-    console.log("Settings modal opened.");
+    // Use the class instance method to open the modal
+    settingsModal.open();
+    // Update user info after opening, as open() loads settings
+    updateUserInfoInSettings();
+    console.log("Settings modal opened via class method.");
 }
 
 /**
  * Handles closing the settings modal.
  */
 function closeSettings() {
-    toggleSettingsModal(false);
-    console.log("Settings modal closed.");
+    // Use the class instance method to close the modal
+    settingsModal.close();
+    console.log("Settings modal closed via class method.");
 }
 
 /**
@@ -402,11 +400,11 @@ export function initializeSettingsModal() {
         });
     });
 
-    // Close and Save buttons
-    closeModalBtn?.addEventListener('click', closeSettings);
-    saveSettingsBtn?.addEventListener('click', handleGeneralSettingsSave);
+    // Close and Save buttons are handled by the SettingsModal class instance
+    // closeModalBtn?.addEventListener('click', closeSettings); // REMOVED - Handled by class
+    // saveSettingsBtn?.addEventListener('click', handleGeneralSettingsSave); // REMOVED - Handled by class
 
-    // Close modal on overlay click
+    // Close modal on overlay click (Keep this one as it targets the overlay specifically)
     settingsModalElement?.addEventListener('click', (event) => {
         if (event.target === settingsModalElement) {
             closeSettings();
