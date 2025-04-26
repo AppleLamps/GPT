@@ -3020,3 +3020,129 @@ body.dark-mode #liveButton.error-state {
     /* display: none; */ /* Controlled by JS */
     transition: opacity 0.3s ease; /* Smooth appearance */
 }
+
+/* Realtime Status Popup */
+.realtime-popup {
+    display: none; /* Hidden by default */
+    position: absolute;
+    bottom: calc(100% + 10px); /* Position above the input container */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--background-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 10px 15px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    opacity: 0;
+    transition: opacity 0.3s ease, bottom 0.3s ease;
+    white-space: nowrap;
+}
+
+.realtime-popup.visible {
+    display: flex;
+    opacity: 1;
+    bottom: calc(100% + 5px); /* Slide up slightly when visible */
+}
+
+#realtime-status-text {
+    font-size: 14px;
+    color: var(--text-primary);
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px; /* Limit width to prevent overflow */
+}
+
+.end-live-button {
+    background-color: var(--error-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.end-live-button:hover {
+    background-color: #c4302b; /* Darker red */
+}
+
+/* State Classes for Popup */
+.realtime-popup.connecting #realtime-status-text {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.realtime-popup.active #realtime-status-text {
+    color: var(--accent-color); /* Or a green color */
+    font-weight: 500;
+}
+
+.realtime-popup.error-state {
+    border-color: var(--error-color);
+}
+
+.realtime-popup.error-state #realtime-status-text {
+    color: var(--error-color);
+    font-weight: 500;
+}
+
+/* Dark Mode Popup */
+body.dark-mode .realtime-popup {
+    background-color: var(--dark-background-secondary);
+    border-color: var(--dark-border-primary);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode #realtime-status-text {
+    color: var(--dark-text-primary);
+}
+
+body.dark-mode .realtime-popup.connecting #realtime-status-text {
+    color: var(--dark-text-muted);
+}
+
+body.dark-mode .realtime-popup.active #realtime-status-text {
+    color: var(--dark-accent-color);
+}
+
+body.dark-mode .realtime-popup.error-state {
+    border-color: var(--error-color);
+}
+
+body.dark-mode .realtime-popup.error-state #realtime-status-text {
+    color: var(--error-color);
+}
+
+/* Mobile Adjustments for Popup */
+@media (max-width: 600px) {
+    .realtime-popup {
+        width: calc(100% - 2rem); /* Adjust width for mobile */
+        left: 1rem;
+        transform: translateX(0);
+        bottom: calc(100% + 10px); /* Ensure it's above input */
+        gap: 10px;
+        padding: 8px 12px;
+    }
+
+    .realtime-popup.visible {
+         bottom: calc(100% + 5px);
+    }
+
+    #realtime-status-text {
+        font-size: 13px;
+        max-width: none; /* Allow text to wrap */
+        white-space: normal;
+    }
+
+    .end-live-button {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+}
