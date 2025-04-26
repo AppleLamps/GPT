@@ -1,6 +1,14 @@
 // js/realtimeService.js - Handles OpenAI Realtime API interactions via WebRTC
 
-import * as state from './state.js';
+import {
+    getIsRealtimeSessionActive, setIsRealtimeSessionActive,
+    getRealtimeSessionStatus, setRealtimeSessionStatus,
+    getRealtimeConnection, setRealtimeConnection,
+    getRealtimeDataChannel, setRealtimeDataChannel,
+    getRealtimeRemoteAudioStream, setRealtimeRemoteAudioStream,
+    getRealtimeEphemeralKey, setRealtimeEphemeralKey,
+    getCurrentRealtimeTranscript, setCurrentRealtimeTranscript
+} from './state.js'; // <-- Import specific getters/setters
 import { showNotification } from './notificationHelper.js';
 import { supabase } from './supabaseClient.js'; // Assuming supabase client is initialized here
 
@@ -19,12 +27,15 @@ let localAudioTrack = null; // User's audio track sent to OpenAI
  */
 export async function initializeSession() {
     console.log("Initializing real-time session...");
-    if (state.isRealtimeSessionActive) {
+    if (getIsRealtimeSessionActive()) { // <-- Use getter
         console.warn("Session already active.");
         return;
     }
 
-    updateState({ status: 'connecting', active: true });
+    // Update state directly
+    setRealtimeSessionStatus('connecting');
+    setIsRealtimeSessionActive(true);
+    document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
 
     try {
         // 1. Get Ephemeral Key and Session ID from Backend
@@ -38,7 +49,9 @@ export async function initializeSession() {
             throw new Error(`Failed to get session key: ${sessionError?.message || 'Invalid response'}`);
         }
         const { ephemeral_key, session_id } = sessionData;
-        updateState({ ephemeralKey: ephemeral_key });
+        // Update state directly
+        setRealtimeEphemeralKey(ephemeral_key);
+        document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
         console.log("Received session details.");
 
         // 2. Get Microphone Access
@@ -52,7 +65,9 @@ export async function initializeSession() {
         const pc = new RTCPeerConnection({
             iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] // Example STUN server
         });
-        updateState({ connection: pc });
+        // Update state directly
+        setRealtimeConnection(pc);
+        document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
 
         // 4. Setup Event Handlers for PeerConnection
         setupPeerConnectionHandlers(pc);
@@ -64,7 +79,9 @@ export async function initializeSession() {
         // 6. Create Data Channel
         console.log("Creating data channel:", DATA_CHANNEL_NAME);
         const dc = pc.createDataChannel(DATA_CHANNEL_NAME, { ordered: true });
-        updateState({ dataChannel: dc });
+        // Update state directly
+        setRealtimeDataChannel(dc);
+        document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
         setupDataChannelHandlers(dc);
 
         // 7. Initiate SDP Offer/Answer Exchange
@@ -107,8 +124,11 @@ export async function initializeSession() {
     } catch (error) {
         console.error("Real-time session initialization failed:", error);
         showNotification(`Error starting live session: ${error.message}`, 'error');
-        await terminateSession(); // Clean up on failure
-        updateState({ status: 'error', active: false });
+        // Update state directly on error before terminating
+        setRealtimeSessionStatus('error');
+        setIsRealtimeSessionActive(false);
+        document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
+        await terminateSession(); // Clean up on failure (will reset state again)
     }
 }
 
@@ -117,8 +137,8 @@ export async function initializeSession() {
  */
 export async function terminateSession() {
     console.log("Terminating real-time session...");
-    const pc = state.realtimeConnection;
-    const dc = state.realtimeDataChannel;
+    const pc = getRealtimeConnection(); // <-- Use getter
+    const dc = getRealtimeDataChannel(); // <-- Use getter
 
     if (dc) {
         try { dc.close(); } catch (e) { console.warn("Error closing data channel:", e); }
@@ -143,16 +163,16 @@ export async function terminateSession() {
         console.log("Removed audio playback element.");
     }
 
-    // Reset state
-    updateState({
-        active: false,
-        status: 'inactive',
-        connection: null,
-        dataChannel: null,
-        remoteStream: null,
-        ephemeralKey: null,
-        transcript: ''
-    });
+    // Reset state directly
+    setIsRealtimeSessionActive(false);
+    setRealtimeSessionStatus('inactive');
+    setRealtimeConnection(null);
+    setRealtimeDataChannel(null);
+    setRealtimeRemoteAudioStream(null);
+    setRealtimeEphemeralKey(null);
+    setCurrentRealtimeTranscript('');
+    document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
+
     localStream = null;
     localAudioTrack = null;
     console.log("Real-time session terminated and state reset.");
@@ -160,28 +180,7 @@ export async function terminateSession() {
 
 // --- Private Helper Functions ---
 
-/**
- * Updates the shared application state for real-time variables.
- * @param {{status?: string, active?: boolean, connection?: RTCPeerConnection | null, dataChannel?: RTCDataChannel | null, remoteStream?: MediaStream | null, ephemeralKey?: string | null, transcript?: string}} updates
- */
-function updateState(updates) {
-    if (updates.status !== undefined) state.realtimeSessionStatus = updates.status;
-    if (updates.active !== undefined) state.isRealtimeSessionActive = updates.active;
-    if (updates.connection !== undefined) state.realtimeConnection = updates.connection;
-    if (updates.dataChannel !== undefined) state.realtimeDataChannel = updates.dataChannel;
-    if (updates.remoteStream !== undefined) state.realtimeRemoteAudioStream = updates.remoteStream;
-    if (updates.ephemeralKey !== undefined) state.realtimeEphemeralKey = updates.ephemeralKey;
-    if (updates.transcript !== undefined) state.currentRealtimeTranscript = updates.transcript;
-
-    // Dispatch a custom event to notify the UI about the state change
-    document.dispatchEvent(new CustomEvent('realtime-state-update'));
-
-    console.log("Realtime State Updated:", {
-        status: state.realtimeSessionStatus,
-        active: state.isRealtimeSessionActive,
-        transcript: state.currentRealtimeTranscript
-    });
-}
+// Removed updateState helper function
 
 /**
  * Sets up event handlers for the RTCPeerConnection.
@@ -211,7 +210,8 @@ function setupPeerConnectionHandlers(pc) {
             case 'failed':
                 console.error("ICE connection failed.");
                 showNotification("Live connection failed.", 'error');
-                updateState({ status: 'error' });
+                setRealtimeSessionStatus('error'); // Update state directly
+                document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
                 terminateSession();
                 break;
             case 'disconnected':
@@ -220,7 +220,7 @@ function setupPeerConnectionHandlers(pc) {
                 console.log("ICE connection disconnected or closed.");
                 // Don't immediately terminate on 'disconnected', might recover.
                 // Terminate if it stays disconnected or moves to 'closed'.
-                if (state.isRealtimeSessionActive && pc.iceConnectionState === 'closed') {
+                if (getIsRealtimeSessionActive() && pc.iceConnectionState === 'closed') { // <-- Use getter
                    terminateSession();
                 }
                 break;
@@ -232,24 +232,27 @@ function setupPeerConnectionHandlers(pc) {
         switch (pc.connectionState) {
             case 'connected':
                 console.log("WebRTC connection established successfully.");
-                updateState({ status: 'active' });
+                setRealtimeSessionStatus('active'); // Update state directly
+                document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
                 showNotification("Live session active.", 'info');
                 break;
             case 'failed':
                 console.error("Peer connection failed.");
                 showNotification("Live connection failed.", 'error');
-                updateState({ status: 'error' });
+                setRealtimeSessionStatus('error'); // Update state directly
+                document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
                 terminateSession();
                 break;
             case 'disconnected':
                 console.warn("Peer connection disconnected. Attempting to reconnect...");
                 // Browser might attempt reconnection automatically. Monitor state.
-                updateState({ status: 'connecting' }); // Reflect potential reconnect attempt
+                setRealtimeSessionStatus('connecting'); // Update state directly
+                document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
                 break;
             case 'closed':
                 console.log("Peer connection closed.");
                 // Ensure cleanup if not already triggered by ICE state
-                 if (state.isRealtimeSessionActive) {
+                 if (getIsRealtimeSessionActive()) { // <-- Use getter
                    terminateSession();
                 }
                 break;
@@ -259,7 +262,8 @@ function setupPeerConnectionHandlers(pc) {
     pc.ontrack = (event) => {
         console.log("Remote track received:", event.track.kind);
         if (event.track.kind === 'audio') {
-            updateState({ remoteStream: event.streams[0] });
+            setRealtimeRemoteAudioStream(event.streams[0]); // Update state directly
+            document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI (though UI doesn't use stream directly)
             playRemoteAudio(event.streams[0]);
         }
     };
@@ -284,7 +288,8 @@ function setupDataChannelHandlers(dc) {
     dc.onerror = (error) => {
         console.error("Data channel error:", error);
         showNotification("Data channel error.", 'error');
-        updateState({ status: 'error' });
+        setRealtimeSessionStatus('error'); // Update state directly
+        document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
         // Consider terminating session depending on error severity
     };
 
@@ -315,7 +320,8 @@ function handleServerEvent(eventData) {
         case 'response.text.delta':
             // Append text delta to the current transcript
             if (eventData.delta) {
-                updateState({ transcript: state.currentRealtimeTranscript + eventData.delta });
+                setCurrentRealtimeTranscript(getCurrentRealtimeTranscript() + eventData.delta); // Update state directly
+                document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
             }
             break;
 
@@ -328,7 +334,7 @@ function handleServerEvent(eventData) {
         case 'response.done':
             console.log("Server indicated end of response turn.");
             // Log the final transcript for now, as planned
-            console.log("Final Transcript:", state.currentRealtimeTranscript);
+            console.log("Final Transcript:", getCurrentRealtimeTranscript()); // <-- Use getter
             // Reset transcript for the next turn? Or wait for user input?
             // updateState({ transcript: '' }); // Reset for next turn
             // TODO: Decide how to integrate into chat history later.
@@ -347,10 +353,11 @@ function handleServerEvent(eventData) {
         case 'error':
             console.error("Received error event from server:", eventData.message || eventData);
             showNotification(`Live session error: ${eventData.message || 'Unknown error'}`, 'error');
-            updateState({ status: 'error' });
+            setRealtimeSessionStatus('error'); // Update state directly
+            document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
             // Consider terminating based on error severity
             if (eventData.is_fatal) {
-                terminateSession();
+                terminateSession(); // Will reset state again
             }
             break;
 
@@ -364,7 +371,7 @@ function handleServerEvent(eventData) {
  * @param {object} eventObject The event data to send.
  */
 function sendClientEvent(eventObject) {
-    const dc = state.realtimeDataChannel;
+    const dc = getRealtimeDataChannel(); // <-- Use getter
     if (dc && dc.readyState === 'open') {
         try {
             const message = JSON.stringify(eventObject);
