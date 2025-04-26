@@ -923,9 +923,8 @@ function updateRealtimeUI() {
                 realtimeStatusPopup.classList.add('connecting');
                 break;
             case 'active':
-                // Show transcript if available, otherwise "Listening..."
-                const transcript = state.currentRealtimeTranscript;
-                realtimeStatusText.textContent = transcript ? `Transcript: "${transcript}"` : "Listening...";
+                // Show a consistent message when the session is active
+                realtimeStatusText.textContent = "Live Session Active"; // Consistent text
                 realtimeStatusPopup.classList.add('active');
                 break;
             case 'error':
