@@ -3126,13 +3126,18 @@ body.dark-mode .realtime-popup.error-state #realtime-status-text {
         width: calc(100% - 2rem); /* Adjust width for mobile */
         left: 1rem;
         transform: translateX(0);
-        bottom: calc(100% + 10px); /* Ensure it's above input */
+        /* Position relative to the top of the input container, offset upwards */
+        bottom: auto; /* Remove bottom positioning */
+        top: -45px; /* Adjust this value as needed to position above input */
         gap: 10px;
         padding: 8px 12px;
+        /* Ensure it's positioned relative to the input container */
+        /* The .input-container already has position: relative */
     }
 
     .realtime-popup.visible {
-         bottom: calc(100% + 5px);
+         /* Keep top positioning, rely on opacity/display for visibility */
+         /* bottom: calc(100% + 5px); */ /* Remove this */
     }
 
     #realtime-status-text {
