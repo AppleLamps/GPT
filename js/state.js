@@ -1,5 +1,4 @@
-/
-    / ===== FILE: js / state.js =====
+// ===== FILE: js/state.js =====
 // Manages the application's state
 
 // Import dataService functions at the top
