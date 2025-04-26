@@ -1,7 +1,8 @@
 // ===== FILE: js/components/chatInput.js =====
 import * as state from '../state.js';
 import * as api from '../api.js';
-import * as utils from '../utils.js'; // utils now contains processAndStoreFile and getFileExtension
+import * as utils from '../utils.js';
+import * as realtimeService from '../realtimeService.js'; // <-- Add Realtime Service
 import { addUserMessage, showChatInterface, showTypingIndicator, removeTypingIndicator, createAIMessageContainer, finalizeAIMessageContent, setupMessageActions } from './messageList.js';
 import { showNotification } from '../notificationHelper.js';
 import { fetchDeepResearch } from '../geminiapi.js'; // Will be created
@@ -59,6 +60,10 @@ let searchButton = null;
 let researchButton = null;
 let voiceButton = null;
 let imageGenButton = null;
+let liveButton = null; // <-- Add Live Button element
+
+// Transcript Display
+let liveTranscriptDisplay = null; // <-- Add Transcript Display element
 
 // --- >>> Mobile Elements <<< ---
 // Get elements within the initialization function to ensure DOM is ready
@@ -853,6 +858,73 @@ function observeInputContainerResize() {
     }
 }
 
+// --- Realtime UI Update ---
+/**
+ * Updates the Live button and transcript display based on realtime state.
+ */
+function updateRealtimeUI() {
+    if (!liveButton || !liveTranscriptDisplay) return;
+
+    const isActive = state.isRealtimeSessionActive;
+    const status = state.realtimeSessionStatus;
+    const transcript = state.currentRealtimeTranscript;
+
+    liveButton.classList.toggle('active', isActive);
+    liveButton.classList.remove('connecting', 'error-state'); // Clear dynamic states
+
+    let title = 'Start Live Conversation';
+    let icon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>`; // Default Mic icon
+
+    if (isActive) {
+        title = 'Stop Live Conversation';
+        icon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic-off"><line x1="16" x2="16" y1="3" y2="8"/><line x1="8" x2="8" y1="3" y2="8"/><line x1="12" x2="12" y1="17" y2="22"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 12a3 3 0 0 0-3 3v2a3 3 0 0 0 6 0v-2a3 3 0 0 0-3-3Z"/><line x1="1" x2="23" y1="1" y2="23"/></svg>`; // Mic Off icon
+
+        if (status === 'connecting') {
+            liveButton.classList.add('connecting');
+            title = 'Connecting Live Session...';
+            // Optional: Add a spinner or different icon for connecting
+        } else if (status === 'error') {
+            liveButton.classList.add('error-state');
+            title = 'Live Session Error - Click to Stop';
+            // Optional: Add an error icon
+        }
+    }
+
+    liveButton.title = title;
+    liveButton.innerHTML = icon; // Update icon
+
+    // Update transcript display
+    liveTranscriptDisplay.textContent = transcript;
+    liveTranscriptDisplay.style.display = isActive && transcript ? 'inline' : 'none'; // Show only when active and has text
+}
+
+
+// --- Live Session Toggle ---
+/**
+ * Handles clicks on the Live button to start/stop the session.
+ */
+async function handleLiveToggle() {
+    if (!liveButton) return;
+    liveButton.disabled = true; // Prevent double-clicks
+
+    if (state.isRealtimeSessionActive) {
+        await realtimeService.terminateSession();
+    } else {
+        // Check for API key before starting
+        const apiKey = state.getApiKey();
+        if (!apiKey) {
+            showNotification("OpenAI API key not set in Settings. Required for Live Conversation.", 'error');
+            liveButton.disabled = false;
+            return;
+        }
+        await realtimeService.initializeSession();
+    }
+
+    updateRealtimeUI(); // Update UI immediately after action attempt
+    liveButton.disabled = false; // Re-enable button
+}
+
+
 // Add missing renderImagePreview function
 export function renderImagePreview() {
     const currentImage = state.getCurrentImage();
@@ -875,7 +947,7 @@ function updateToolbarButtons() {
 
 export function initializeChatInput() {
     console.log("Initializing Chat Input...");
-    
+
     // Initialize all DOM elements here to ensure they're available when needed
     // Image Elements
     imagePreviewContainer = document.getElementById('imagePreview');
@@ -892,6 +964,8 @@ export function initializeChatInput() {
     researchButton = document.getElementById('researchButton');
     voiceButton = document.getElementById('voiceButton');
     imageGenButton = document.getElementById('imageGenButton');
+    liveButton = document.getElementById('liveButton'); // <-- Get Live Button
+    liveTranscriptDisplay = document.getElementById('liveTranscript'); // <-- Get Transcript Display
 
     // --- >>> Get Mobile Elements <<< ---
     mobileOptionsToggleBtn = document.getElementById('mobileOptionsToggleBtn');
@@ -990,7 +1064,13 @@ export function initializeChatInput() {
         imageGenButton.addEventListener('click', (e) => {
             handleImageGenToggle(e);
             closeMobileOptions();
-        }); 
+        });
+    }
+    if (liveButton) { // <-- Add listener for Live Button
+        liveButton.addEventListener('click', (e) => {
+            handleLiveToggle();
+            closeMobileOptions();
+        });
     }
 
     // Make sure all toolbar buttons close the popup when clicked
@@ -1010,7 +1090,12 @@ export function initializeChatInput() {
     renderImagePreview(); // Render initial image preview if exists
     
     // Update button states initially
+    // Update button states initially
     updateToolbarButtons();
-    
+    updateRealtimeUI(); // <-- Initial UI update for realtime elements
+
+    // Listen for state updates from the realtime service
+    document.addEventListener('realtime-state-update', updateRealtimeUI);
+
     console.log("Chat Input Initialized.");
 }

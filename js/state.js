@@ -1,4 +1,5 @@
-// ===== FILE: js/state.js =====
+/
+    / ===== FILE: js / state.js =====
 // Manages the application's state
 
 // Import dataService functions at the top
@@ -28,6 +29,15 @@ let activeChatId = null; // Track the ID of the chat loaded from storage
 
 let customGptConfigs = []; // Array to hold loaded config metadata {id, name, description} for dropdowns
 let activeCustomGptConfig = null; // Holds the currently selected full config object or null for default behavior
+
+// --- Real-time Session State ---
+let isRealtimeSessionActive = false;
+let realtimeSessionStatus = 'inactive'; // 'inactive', 'connecting', 'active', 'error'
+let realtimeConnection = null; // RTCPeerConnection instance
+let realtimeDataChannel = null; // RTCDataChannel instance
+let realtimeRemoteAudioStream = null; // MediaStream from AI
+let realtimeEphemeralKey = null; // Ephemeral key for the session
+let currentRealtimeTranscript = ''; // Live transcript
 
 // --- Chat History ---
 export function getChatHistory() {

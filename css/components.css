@@ -2974,3 +2974,49 @@ body.dark-mode .secondary-button:hover {
 .ai-message-content hr {
   display: none;
 }
+
+/* --- Realtime Feature Styles --- */
+
+/* Live Button States */
+#liveButton.active {
+    background-color: var(--accent-color-light); /* Light blue background */
+    border-color: var(--accent-color);
+    color: var(--accent-color); /* Blue icon */
+}
+body.dark-mode #liveButton.active {
+    background-color: rgba(var(--dark-accent-color-rgb), 0.2);
+    border-color: var(--dark-accent-color);
+    color: var(--dark-accent-color);
+}
+
+#liveButton.connecting {
+    /* Optional: Add a subtle animation or different style */
+    opacity: 0.7;
+    cursor: wait;
+}
+
+#liveButton.error-state {
+    background-color: #ffebee; /* Light red background */
+    border-color: var(--error-color);
+    color: var(--error-color); /* Red icon */
+}
+body.dark-mode #liveButton.error-state {
+    background-color: rgba(244, 67, 54, 0.15); /* Darker red background */
+    border-color: var(--error-color);
+    color: var(--error-color);
+}
+
+/* Live Transcript Display (Basic positioning handled inline in HTML) */
+.live-transcript-container {
+    /* Add padding if needed */
+    /* padding: 0 1rem; */
+}
+
+#liveTranscript {
+    /* Styles are mostly inline in index.html for simplicity */
+    /* font-style: italic; */
+    /* color: var(--text-muted); */
+    /* font-size: 0.9em; */
+    /* display: none; */ /* Controlled by JS */
+    transition: opacity 0.3s ease; /* Smooth appearance */
+}
