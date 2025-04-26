@@ -2979,29 +2979,58 @@ body.dark-mode .secondary-button:hover {
 
 /* Live Button States */
 #liveButton.active {
-    background-color: var(--accent-color-light); /* Light blue background */
+    /* <-- Changed ID selector */
+    background-color: var(--accent-color-light);
+    /* Light blue background */
     border-color: var(--accent-color);
-    color: var(--accent-color); /* Blue icon */
+    color: var(--accent-color);
+    /* Blue icon */
 }
+
 body.dark-mode #liveButton.active {
+    /* <-- Changed ID selector */
     background-color: rgba(var(--dark-accent-color-rgb), 0.2);
     border-color: var(--dark-accent-color);
     color: var(--dark-accent-color);
 }
 
 #liveButton.connecting {
+    /* <-- Changed ID selector */
     /* Optional: Add a subtle animation or different style */
     opacity: 0.7;
     cursor: wait;
+    /* Example animation */
+    animation: pulse-connecting 1.5s infinite ease-in-out;
 }
 
-#liveButton.error-state {
-    background-color: #ffebee; /* Light red background */
-    border-color: var(--error-color);
-    color: var(--error-color); /* Red icon */
+@keyframes pulse-connecting {
+    0% {
+        opacity: 0.7;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.7;
+    }
 }
+
+
+#liveButton.error-state {
+    /* <-- Changed ID selector */
+    background-color: #ffebee;
+    /* Light red background */
+    border-color: var(--error-color);
+    color: var(--error-color);
+    /* Red icon */
+}
+
 body.dark-mode #liveButton.error-state {
-    background-color: rgba(244, 67, 54, 0.15); /* Darker red background */
+    /* <-- Changed ID selector */
+    background-color: rgba(244, 67, 54, 0.15);
+    /* Darker red background */
     border-color: var(--error-color);
     color: var(--error-color);
 }
@@ -3017,15 +3046,20 @@ body.dark-mode #liveButton.error-state {
     /* font-style: italic; */
     /* color: var(--text-muted); */
     /* font-size: 0.9em; */
-    /* display: none; */ /* Controlled by JS */
-    transition: opacity 0.3s ease; /* Smooth appearance */
+    /* display: none; */
+    /* Controlled by JS */
+    transition: opacity 0.3s ease;
+    /* Smooth appearance */
 }
 
 /* Realtime Status Popup */
 .realtime-popup {
-    display: none; /* Hidden by default */
+    display: none;
+    /* Hidden by default */
     position: absolute;
-    bottom: calc(100% + 10px); /* Position above the input container */
+    /* Position relative to parent (.input-container) */
+    bottom: calc(100% + 10px);
+    /* Position above the input container */
     left: 50%;
     transform: translateX(-50%);
     background-color: var(--background-secondary);
@@ -3034,18 +3068,25 @@ body.dark-mode #liveButton.error-state {
     padding: 10px 15px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     z-index: 10;
-    display: flex;
+    /* display: flex; */
+    /* Set by .visible class */
     align-items: center;
     gap: 15px;
     opacity: 0;
     transition: opacity 0.3s ease, bottom 0.3s ease;
     white-space: nowrap;
+    pointer-events: none;
+    /* Allow clicks through when hidden */
+    max-width: 90%;
+    /* Prevent excessive width */
 }
 
 .realtime-popup.visible {
     display: flex;
     opacity: 1;
-    bottom: calc(100% + 5px); /* Slide up slightly when visible */
+    bottom: calc(100% + 5px);
+    /* Slide up slightly when visible */
+    pointer-events: auto;
 }
 
 #realtime-status-text {
@@ -3054,7 +3095,8 @@ body.dark-mode #liveButton.error-state {
     flex-grow: 1;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 300px; /* Limit width to prevent overflow */
+    /* max-width: 300px; */
+    /* Removed fixed max-width */
 }
 
 .end-live-button {
@@ -3067,10 +3109,13 @@ body.dark-mode #liveButton.error-state {
     font-weight: 500;
     cursor: pointer;
     transition: background-color 0.2s ease;
+    flex-shrink: 0;
+    /* Prevent button from shrinking */
 }
 
 .end-live-button:hover {
-    background-color: #c4302b; /* Darker red */
+    background-color: #c4302b;
+    /* Darker red */
 }
 
 /* State Classes for Popup */
@@ -3080,7 +3125,8 @@ body.dark-mode #liveButton.error-state {
 }
 
 .realtime-popup.active #realtime-status-text {
-    color: var(--accent-color); /* Or a green color */
+    color: var(--accent-color);
+    /* Or a green color */
     font-weight: 500;
 }
 
@@ -3120,34 +3166,75 @@ body.dark-mode .realtime-popup.error-state #realtime-status-text {
     color: var(--error-color);
 }
 
-/* Mobile Adjustments for Popup */
+/* --- CORRECTED Mobile Adjustments for Popup --- */
 @media (max-width: 600px) {
     .realtime-popup {
-        width: calc(100% - 2rem); /* Adjust width for mobile */
-        left: 1rem;
-        transform: translateX(0);
-        /* Position relative to the top of the input container, offset upwards */
-        bottom: auto; /* Remove bottom positioning */
-        top: -45px; /* Adjust this value as needed to position above input */
+        /* Position relative to input-container, centered above */
+        width: calc(100% - 2rem);
+        /* Use most of the width, leave some margin */
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: calc(100% + 5px);
+        /* Position it 5px above the input container */
+        top: auto;
+        /* Ensure top is not interfering */
+
+        /* Adjust padding and gap for smaller screens */
         gap: 10px;
         padding: 8px 12px;
-        /* Ensure it's positioned relative to the input container */
-        /* The .input-container already has position: relative */
+        white-space: normal;
+        /* Allow text wrapping */
     }
 
-    .realtime-popup.visible {
-         /* Keep top positioning, rely on opacity/display for visibility */
-         /* bottom: calc(100% + 5px); */ /* Remove this */
-    }
+    /* .realtime-popup.visible doesn't need specific mobile overrides */
+    /* if the default positioning above works */
 
     #realtime-status-text {
         font-size: 13px;
-        max-width: none; /* Allow text to wrap */
+        max-width: none;
+        /* Allow text to wrap */
         white-space: normal;
+        /* Explicitly allow wrapping */
+        text-align: center;
+        /* Center text if it wraps */
+        flex-grow: 1;
+        /* Allow text to take available space */
     }
 
     .end-live-button {
         padding: 5px 10px;
         font-size: 12px;
+        flex-shrink: 0;
+        /* Prevent button shrinking */
     }
+}
+
+/* --- END CORRECTION --- */
+
+/* Remove empty ruleset */
+/*
+.live-transcript-container {
+    /* Add padding if needed */
+/* padding: 0 1rem; */
+/* }
+*/
+
+/* Add some basic styling if you add the transcript display */
+#liveTranscript {
+    display: inline-block;
+    /* Or block */
+    padding: 2px 8px;
+    margin-bottom: 4px;
+    /* font-style: italic; */
+    /* color: var(--text-muted); */
+    /* font-size: 0.9em; */
+    /* display: none; */
+    /* Controlled by JS */
+    transition: opacity 0.3s ease;
+    background-color: var(--background-secondary);
+    border-radius: 4px;
+}
+
+body.dark-mode #liveTranscript {
+    background-color: var(--dark-background-tertiary);
 }
