@@ -2,8 +2,8 @@
 // Manages the application's state
 
 // Import dataService functions at the top
-import * as dataService from './dataService.js'; // <-- Added import
-import { showNotification } from './notificationHelper.js'; // <-- Ensure this is imported if used in saveSettings error
+import * as dataService from './dataService.js';
+import { showNotification } from './notificationHelper.js';
 
 let chatHistory = [];
 let currentImage = null; // { data: base64string, name: filename }
@@ -40,10 +40,18 @@ let currentRealtimeTranscript = ''; // Live transcript
 
 // --- Getters and Setters for Real-time State ---
 export function getIsRealtimeSessionActive() { return isRealtimeSessionActive; }
-export function setIsRealtimeSessionActive(value) { isRealtimeSessionActive = value; }
+export function setIsRealtimeSessionActive(value) { isRealtimeSessionActive = !!value; } // Ensure boolean
 
 export function getRealtimeSessionStatus() { return realtimeSessionStatus; }
-export function setRealtimeSessionStatus(value) { realtimeSessionStatus = value; }
+export function setRealtimeSessionStatus(value) {
+    const validStatuses = ['inactive', 'connecting', 'active', 'error'];
+    if (validStatuses.includes(value)) {
+        realtimeSessionStatus = value;
+        console.log("Realtime Status Set To:", realtimeSessionStatus); // Log status changes
+    } else {
+        console.warn("Attempted to set invalid realtime status:", value);
+    }
+}
 
 export function getRealtimeConnection() { return realtimeConnection; }
 export function setRealtimeConnection(value) { realtimeConnection = value; }
@@ -59,6 +67,19 @@ export function setRealtimeEphemeralKey(value) { realtimeEphemeralKey = value; }
 
 export function getCurrentRealtimeTranscript() { return currentRealtimeTranscript; }
 export function setCurrentRealtimeTranscript(value) { currentRealtimeTranscript = value; }
+
+// --- >>> NEW: Function to clear all real-time state variables <<< ---
+export function clearRealtimeState() {
+    console.log("Clearing all real-time state variables.");
+    isRealtimeSessionActive = false;
+    realtimeSessionStatus = 'inactive';
+    realtimeConnection = null;
+    realtimeDataChannel = null;
+    realtimeRemoteAudioStream = null;
+    realtimeEphemeralKey = null;
+    currentRealtimeTranscript = '';
+}
+// --- >>> END NEW FUNCTION <<< ---
 
 
 // --- Chat History ---
@@ -406,3 +427,4 @@ export function setIsDeepResearchMode(isActive) {
         setImageGenerationMode(false);
     }
 }
+
