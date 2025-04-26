@@ -7,10 +7,11 @@ import {
     getRealtimeDataChannel, setRealtimeDataChannel,
     getRealtimeRemoteAudioStream, setRealtimeRemoteAudioStream,
     getRealtimeEphemeralKey, setRealtimeEphemeralKey,
-    getCurrentRealtimeTranscript, setCurrentRealtimeTranscript
-} from './state.js'; // <-- Import specific getters/setters
+    getCurrentRealtimeTranscript, setCurrentRealtimeTranscript,
+    clearRealtimeState // <-- Import clearRealtimeState
+} from './state.js';
 import { showNotification } from './notificationHelper.js';
-import { supabase } from './supabaseClient.js'; // Assuming supabase client is initialized here
+import { supabase } from './supabaseClient.js';
 
 const REALTIME_API_URL_BASE = "https://api.openai.com/v1/realtime";
 const REALTIME_MODEL = "gpt-4o-mini-realtime-preview"; // Or your desired model
@@ -27,7 +28,7 @@ let localAudioTrack = null; // User's audio track sent to OpenAI
  */
 export async function initializeSession() {
     console.log("Initializing real-time session...");
-    if (getIsRealtimeSessionActive()) { // <-- Use getter
+    if (getIsRealtimeSessionActive()) {
         console.warn("Session already active.");
         return;
     }
@@ -37,24 +38,24 @@ export async function initializeSession() {
     setIsRealtimeSessionActive(true);
     document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
 
+    let pc = null; // Define pc here to be accessible in catch block if needed
+
     try {
         // 1. Get Ephemeral Key and Session ID from Backend
         console.log("Fetching ephemeral key and session ID from 'talk' function...");
-        const { data: sessionData, error: sessionError } = await supabase.functions.invoke('talk', { // <-- Use deployed function name 'talk'
-            method: 'POST', // Ensure POST method is used if required by function
-            body: {} // Add empty body as required by Supabase invoke with POST
+        const { data: sessionData, error: sessionError } = await supabase.functions.invoke('talk', {
+            method: 'POST',
+            body: {} // Send empty body for POST if function expects it
         });
 
-        // Add more robust check for both error and expected data properties
         if (sessionError || !sessionData || !sessionData.ephemeral_key || !sessionData.session_id) {
              console.error("Supabase function invocation error or invalid data:", { sessionError, sessionData });
              throw new Error(`Failed to get session key: ${sessionError?.message || 'Invalid or missing session data returned from function.'}`);
         }
-        const { ephemeral_key, session_id } = sessionData;
-        // Update state directly
+        const { ephemeral_key, session_id } = sessionData; // session_id might not be needed for SDP exchange but good to have
         setRealtimeEphemeralKey(ephemeral_key);
-        document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
-        console.log("Received session details.");
+        document.dispatchEvent(new CustomEvent('realtime-state-update'));
+        console.log(`Received session details. Session ID: ${session_id}`);
 
         // 2. Get Microphone Access
         console.log("Requesting microphone access...");
@@ -64,12 +65,11 @@ export async function initializeSession() {
 
         // 3. Create and Configure RTCPeerConnection
         console.log("Creating RTCPeerConnection...");
-        const pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] // Example STUN server
+        pc = new RTCPeerConnection({ // Assign to the outer scope variable
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
         });
-        // Update state directly
         setRealtimeConnection(pc);
-        document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
+        document.dispatchEvent(new CustomEvent('realtime-state-update'));
 
         // 4. Setup Event Handlers for PeerConnection
         setupPeerConnectionHandlers(pc);
@@ -81,9 +81,8 @@ export async function initializeSession() {
         // 6. Create Data Channel
         console.log("Creating data channel:", DATA_CHANNEL_NAME);
         const dc = pc.createDataChannel(DATA_CHANNEL_NAME, { ordered: true });
-        // Update state directly
         setRealtimeDataChannel(dc);
-        document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
+        document.dispatchEvent(new CustomEvent('realtime-state-update'));
         setupDataChannelHandlers(dc);
 
         // 7. Initiate SDP Offer/Answer Exchange
@@ -93,32 +92,41 @@ export async function initializeSession() {
         console.log("Local description set.");
 
         // 8. Send Offer to OpenAI Realtime Endpoint
-        const realtimeUrl = `${REALTIME_API_URL_BASE}?model=${REALTIME_MODEL}&session_id=${session_id}`;
-        console.log("Sending offer to OpenAI:", realtimeUrl);
+        // --- CORRECTED URL AND FETCH OPTIONS ---
+        const realtimeSdpUrl = `${REALTIME_API_URL_BASE}?model=${REALTIME_MODEL}`; // Remove session_id from query param
+        console.log("Sending offer to OpenAI:", realtimeSdpUrl);
 
-        const response = await fetch(realtimeUrl, {
+        const response = await fetch(realtimeSdpUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${ephemeral_key}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/sdp' // Correct Content-Type
             },
-            body: JSON.stringify({
-                offer: pc.localDescription
-            })
+            body: pc.localDescription.sdp // Send raw SDP string
         });
+        // --- END CORRECTION ---
 
         if (!response.ok) {
             const errorBody = await response.text();
+            // Try to parse JSON error specifically for unsupported content type
+             try {
+                 const errorJson = JSON.parse(errorBody);
+                 if (errorJson?.error?.code === 'unsupported_content_type') {
+                     throw new Error(`OpenAI connection failed (400): ${errorJson.error.message}`);
+                 }
+             } catch (e) { /* Ignore parsing error if not JSON */ }
+            // Throw generic error otherwise
             throw new Error(`OpenAI connection failed (${response.status}): ${errorBody}`);
         }
 
-        const answerData = await response.json();
-        if (!answerData.answer) {
-            throw new Error("Invalid answer received from OpenAI.");
+        // The response body for a successful SDP answer is the SDP text itself
+        const answerSdp = await response.text();
+        if (!answerSdp || !answerSdp.includes('v=0')) { // Basic SDP validation
+            throw new Error("Invalid SDP answer received from OpenAI.");
         }
 
         console.log("Received SDP answer from OpenAI.");
-        await pc.setRemoteDescription(new RTCSessionDescription(answerData.answer));
+        await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp }); // Use the raw SDP text
         console.log("Remote description set. Connection should establish.");
 
         // State is updated to 'active' via peer connection state change handler
@@ -126,11 +134,10 @@ export async function initializeSession() {
     } catch (error) {
         console.error("Real-time session initialization failed:", error);
         showNotification(`Error starting live session: ${error.message}`, 'error');
-        // Update state directly on error before terminating
         setRealtimeSessionStatus('error');
         setIsRealtimeSessionActive(false);
-        document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
-        await terminateSession(); // Clean up on failure (will reset state again)
+        document.dispatchEvent(new CustomEvent('realtime-state-update'));
+        await terminateSession(); // Clean up on failure
     }
 }
 
@@ -139,50 +146,54 @@ export async function initializeSession() {
  */
 export async function terminateSession() {
     console.log("Terminating real-time session...");
-    const pc = getRealtimeConnection(); // <-- Use getter
-    const dc = getRealtimeDataChannel(); // <-- Use getter
+    const pc = getRealtimeConnection();
+    const dc = getRealtimeDataChannel();
 
-    if (dc) {
-        try { dc.close(); } catch (e) { console.warn("Error closing data channel:", e); }
-    }
-    if (pc) {
-        try { pc.close(); } catch (e) { console.warn("Error closing peer connection:", e); }
-    }
+    // Stop local tracks first to signal intent to close media stream
     if (localAudioTrack) {
-        try { localAudioTrack.stop(); } catch (e) { console.warn("Error stopping local audio track:", e); }
+        try { localAudioTrack.stop(); console.log("Local audio track stopped."); }
+        catch (e) { console.warn("Error stopping local audio track:", e); }
+        localAudioTrack = null;
     }
     if (localStream) {
-        // Ensure all tracks are stopped if stream still exists
-        localStream.getTracks().forEach(track => track.stop());
+        localStream.getTracks().forEach(track => {
+            try { track.stop(); } catch(e) { console.warn("Error stopping a local stream track:", e); }
+        });
+        console.log("All local stream tracks stopped.");
+        localStream = null;
+    }
+
+    // Close data channel and peer connection
+    if (dc) {
+        try { dc.close(); console.log("Data channel closed."); }
+        catch (e) { console.warn("Error closing data channel:", e); }
+    }
+    if (pc) {
+        try { pc.close(); console.log("Peer connection closed."); }
+        catch (e) { console.warn("Error closing peer connection:", e); }
     }
 
     // Remove audio playback element
     const audioEl = document.getElementById(AUDIO_PLAYBACK_ELEMENT_ID);
     if (audioEl) {
-        audioEl.pause();
-        audioEl.srcObject = null;
-        audioEl.remove();
-        console.log("Removed audio playback element.");
+        try {
+            audioEl.pause();
+            audioEl.srcObject = null; // Detach stream
+            audioEl.remove();
+            console.log("Removed audio playback element.");
+        } catch (e) {
+            console.warn("Error cleaning up audio element:", e);
+        }
     }
 
-    // Reset state directly
-    setIsRealtimeSessionActive(false);
-    setRealtimeSessionStatus('inactive');
-    setRealtimeConnection(null);
-    setRealtimeDataChannel(null);
-    setRealtimeRemoteAudioStream(null);
-    setRealtimeEphemeralKey(null);
-    setCurrentRealtimeTranscript('');
+    // Reset state
+    clearRealtimeState(); // Use the dedicated state clearing function
     document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
 
-    localStream = null;
-    localAudioTrack = null;
     console.log("Real-time session terminated and state reset.");
 }
 
 // --- Private Helper Functions ---
-
-// Removed updateState helper function
 
 /**
  * Sets up event handlers for the RTCPeerConnection.
@@ -190,13 +201,8 @@ export async function terminateSession() {
  */
 function setupPeerConnectionHandlers(pc) {
     pc.onicecandidate = (event) => {
-        // ICE candidates are usually handled automatically by modern browsers
-        // when using SDP offer/answer with a server like OpenAI's.
-        // Manual handling might be needed for P2P or complex setups.
         if (event.candidate) {
-            console.log("Local ICE candidate generated:", event.candidate.candidate.substring(0, 50) + "...");
-            // In this server-based scenario, candidates are typically included in the SDP
-            // or handled implicitly. No explicit signaling needed here usually.
+            // console.log("Local ICE candidate generated (usually handled automatically):", event.candidate.candidate.substring(0, 50) + "...");
         } else {
             console.log("All local ICE candidates gathered.");
         }
@@ -204,25 +210,29 @@ function setupPeerConnectionHandlers(pc) {
 
     pc.oniceconnectionstatechange = () => {
         console.log("ICE Connection State:", pc.iceConnectionState);
+        const currentStatus = getRealtimeSessionStatus();
         switch (pc.iceConnectionState) {
             case 'connected':
             case 'completed':
-                // Connection is likely stable
+                // If connecting, transition to active (if not already handled by connectionstatechange)
+                if (currentStatus === 'connecting') {
+                    setRealtimeSessionStatus('active');
+                    document.dispatchEvent(new CustomEvent('realtime-state-update'));
+                }
                 break;
             case 'failed':
                 console.error("ICE connection failed.");
-                showNotification("Live connection failed.", 'error');
-                setRealtimeSessionStatus('error'); // Update state directly
-                document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
-                terminateSession();
+                if (currentStatus !== 'error') { // Prevent duplicate notifications/termination
+                    showNotification("Live connection failed (ICE).", 'error');
+                    setRealtimeSessionStatus('error');
+                    document.dispatchEvent(new CustomEvent('realtime-state-update'));
+                    terminateSession();
+                }
                 break;
             case 'disconnected':
             case 'closed':
-                // Connection lost or closed, session might need termination
                 console.log("ICE connection disconnected or closed.");
-                // Don't immediately terminate on 'disconnected', might recover.
-                // Terminate if it stays disconnected or moves to 'closed'.
-                if (getIsRealtimeSessionActive() && pc.iceConnectionState === 'closed') { // <-- Use getter
+                if (getIsRealtimeSessionActive() && pc.iceConnectionState === 'closed') {
                    terminateSession();
                 }
                 break;
@@ -231,30 +241,35 @@ function setupPeerConnectionHandlers(pc) {
 
     pc.onconnectionstatechange = () => {
         console.log("Peer Connection State:", pc.connectionState);
+        const currentStatus = getRealtimeSessionStatus();
         switch (pc.connectionState) {
             case 'connected':
                 console.log("WebRTC connection established successfully.");
-                setRealtimeSessionStatus('active'); // Update state directly
-                document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
-                showNotification("Live session active.", 'info');
+                 if (currentStatus !== 'active') { // Update only if not already active
+                    setRealtimeSessionStatus('active');
+                    document.dispatchEvent(new CustomEvent('realtime-state-update'));
+                    showNotification("Live session active.", 'info');
+                 }
                 break;
             case 'failed':
                 console.error("Peer connection failed.");
-                showNotification("Live connection failed.", 'error');
-                setRealtimeSessionStatus('error'); // Update state directly
-                document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
-                terminateSession();
+                 if (currentStatus !== 'error') { // Prevent duplicate notifications/termination
+                    showNotification("Live connection failed (Peer).", 'error');
+                    setRealtimeSessionStatus('error');
+                    document.dispatchEvent(new CustomEvent('realtime-state-update'));
+                    terminateSession();
+                 }
                 break;
             case 'disconnected':
                 console.warn("Peer connection disconnected. Attempting to reconnect...");
-                // Browser might attempt reconnection automatically. Monitor state.
-                setRealtimeSessionStatus('connecting'); // Update state directly
-                document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
+                 if (currentStatus === 'active') { // Only show connecting if was previously active
+                    setRealtimeSessionStatus('connecting');
+                    document.dispatchEvent(new CustomEvent('realtime-state-update'));
+                 }
                 break;
             case 'closed':
                 console.log("Peer connection closed.");
-                // Ensure cleanup if not already triggered by ICE state
-                 if (getIsRealtimeSessionActive()) { // <-- Use getter
+                 if (getIsRealtimeSessionActive()) {
                    terminateSession();
                 }
                 break;
@@ -264,7 +279,7 @@ function setupPeerConnectionHandlers(pc) {
     pc.ontrack = (event) => {
         console.log("Remote track received:", event.track.kind);
         if (event.track.kind === 'audio') {
-            setRealtimeRemoteAudioStream(event.streams[0]); // Update state directly
+            setRealtimeRemoteAudioStream(event.streams[0]);
             document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI (though UI doesn't use stream directly)
             playRemoteAudio(event.streams[0]);
         }
@@ -278,21 +293,31 @@ function setupPeerConnectionHandlers(pc) {
 function setupDataChannelHandlers(dc) {
     dc.onopen = () => {
         console.log("Data channel opened:", dc.label);
-        // Optionally send an initial message if required by API
-        // sendClientEvent({ type: "session.start" }); // Example
+        // Connection is considered fully active when data channel is open
+        if (getRealtimeSessionStatus() !== 'active') {
+            setRealtimeSessionStatus('active');
+            document.dispatchEvent(new CustomEvent('realtime-state-update'));
+            showNotification("Live session active.", 'info');
+        }
     };
 
     dc.onclose = () => {
         console.log("Data channel closed:", dc.label);
-        // May indicate session end or connection issue
+        // If the session is still marked active, terminate it
+        if (getIsRealtimeSessionActive()) {
+            console.warn("Data channel closed unexpectedly while session was active. Terminating.");
+            terminateSession();
+        }
     };
 
     dc.onerror = (error) => {
         console.error("Data channel error:", error);
-        showNotification("Data channel error.", 'error');
-        setRealtimeSessionStatus('error'); // Update state directly
-        document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
-        // Consider terminating session depending on error severity
+        if (getRealtimeSessionStatus() !== 'error') { // Prevent duplicate notifications/termination
+            showNotification("Data channel error.", 'error');
+            setRealtimeSessionStatus('error');
+            document.dispatchEvent(new CustomEvent('realtime-state-update'));
+            terminateSession();
+        }
     };
 
     dc.onmessage = (event) => {
@@ -315,53 +340,62 @@ function handleServerEvent(eventData) {
 
     switch (eventData.type) {
         case 'session.created':
-            console.log("Server confirmed session creation:", eventData.session_id);
-            // Usually connection state change handles 'active' status
+            console.log("Server confirmed session creation:", eventData.session?.id || eventData.session_id);
+            // Status usually set by connection state change
             break;
 
         case 'response.text.delta':
             // Append text delta to the current transcript
-            if (eventData.delta) {
-                setCurrentRealtimeTranscript(getCurrentRealtimeTranscript() + eventData.delta); // Update state directly
+            if (eventData.delta || typeof eventData.delta === 'string') { // Handle empty string delta too
+                setCurrentRealtimeTranscript(getCurrentRealtimeTranscript() + eventData.delta);
                 document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
             }
             break;
 
         case 'response.audio.delta':
-            // Audio is handled via the 'ontrack' event, not usually via data channel messages
-            // unless it's metadata about the audio.
-            console.log("Received audio delta event (metadata?):", eventData);
+            // Audio is handled via the 'ontrack' event
+            // console.log("Received audio delta event (metadata only):", eventData);
             break;
 
         case 'response.done':
             console.log("Server indicated end of response turn.");
             // Log the final transcript for now, as planned
-            console.log("Final Transcript:", getCurrentRealtimeTranscript()); // <-- Use getter
-            // Reset transcript for the next turn? Or wait for user input?
-            // updateState({ transcript: '' }); // Reset for next turn
+            console.log("Final Transcript:", getCurrentRealtimeTranscript());
+            // Reset transcript for the next turn
+            setCurrentRealtimeTranscript('');
+            document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
             // TODO: Decide how to integrate into chat history later.
             break;
 
         case 'input_audio_buffer.speech_started':
             console.log("Server detected user speech started.");
-            // Could use this for UI indication (e.g., "Listening...")
+            setCurrentRealtimeTranscript(''); // Clear transcript when user starts speaking
+            document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
+            // TODO: Update UI indicator to show user is speaking (e.g., "Listening...")
             break;
 
         case 'input_audio_buffer.speech_stopped':
             console.log("Server detected user speech stopped.");
-            // Could use this for UI indication (e.g., "Processing...")
+            // TODO: Update UI indicator (e.g., "Processing...")
             break;
 
         case 'error':
             console.error("Received error event from server:", eventData.message || eventData);
-            showNotification(`Live session error: ${eventData.message || 'Unknown error'}`, 'error');
-            setRealtimeSessionStatus('error'); // Update state directly
-            document.dispatchEvent(new CustomEvent('realtime-state-update')); // Notify UI
-            // Consider terminating based on error severity
-            if (eventData.is_fatal) {
-                terminateSession(); // Will reset state again
+            if (getRealtimeSessionStatus() !== 'error') { // Prevent duplicate notifications/termination
+                showNotification(`Live session error: ${eventData.message || 'Unknown error'}`, 'error');
+                setRealtimeSessionStatus('error');
+                document.dispatchEvent(new CustomEvent('realtime-state-update'));
+                // Terminate based on severity if needed
+                if (eventData.is_fatal || eventData.code === 'session_expired') {
+                    terminateSession();
+                }
             }
             break;
+
+        // Add other event handlers as needed (e.g., function_call, session.updated)
+        case 'session.updated':
+             console.log("Session updated by server:", eventData.session);
+             break;
 
         default:
             console.warn("Received unhandled server event type:", eventData.type, eventData);
@@ -373,7 +407,7 @@ function handleServerEvent(eventData) {
  * @param {object} eventObject The event data to send.
  */
 function sendClientEvent(eventObject) {
-    const dc = getRealtimeDataChannel(); // <-- Use getter
+    const dc = getRealtimeDataChannel();
     if (dc && dc.readyState === 'open') {
         try {
             const message = JSON.stringify(eventObject);
@@ -403,10 +437,15 @@ function playRemoteAudio(stream) {
     }
 
     console.log("Setting srcObject for audio playback.");
-    audioEl.srcObject = stream;
-    audioEl.play().catch(error => {
-        console.error("Audio playback failed:", error);
-        // Autoplay might be blocked, user interaction might be needed
-        showNotification("Could not play AI audio automatically.", "warning");
-    });
+    // Ensure we have a valid stream before assigning
+    if (stream && stream instanceof MediaStream) {
+        audioEl.srcObject = stream;
+        audioEl.play().catch(error => {
+            console.error("Audio playback failed:", error);
+            // Autoplay might be blocked, user interaction might be needed
+            showNotification("Could not play AI audio automatically.", "warning");
+        });
+    } else {
+        console.error("Invalid stream provided to playRemoteAudio.");
+    }
 }
