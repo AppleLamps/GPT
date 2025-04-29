@@ -5,21 +5,25 @@ import { updateInputUIForModel, removeImagePreview, renderFilePreviews, clearMes
 import { openSettings, updateSettingsModalSelect } from './settingsModal.js';
 import { handleNewChat as sidebarHandleNewChat, renderChatList, renderCustomGptList } from './sidebar.js';
 import { clearMessageListUI, showWelcomeInterface } from './messageList.js';
+import { customModelDropdownButton, selectedModelText, customModelDropdownList, getSelectedCustomModel } from '../ui.js';
 
 // --- DOM Elements ---
-const headerModelSelectElement = document.getElementById('headerModelSelect'); // Default model selector
-const activeGptDisplayElement = document.getElementById('activeGptDisplay'); // Span for active GPT name
+const activeGptDisplayElement = document.getElementById('activeGptDisplay');
 const headerSettingsBtnElement = document.getElementById('headerSettingsBtn');
-const headerNewChatBtnElement = document.getElementById('headerNewChatBtn'); // <<< NEW: Header New Chat Button
+const headerNewChatBtnElement = document.getElementById('headerNewChatBtn');
 
 // --- Header Logic ---
 
 /**
- * Handles changes in the header *default* model select dropdown.
+ * Handles changes in the header *default* model selection via the custom dropdown.
  * This only changes the setting used when NO custom GPT is active.
  */
-function handleHeaderModelChange(event) {
-    const newDefaultModel = event.target.value;
+function handleHeaderModelChange() {
+    const newDefaultModel = getSelectedCustomModel(); // Get selected model from custom dropdown
+    if (!newDefaultModel) {
+        console.error("Could not get selected model from custom dropdown.");
+        return;
+    }
     console.log(`Header DEFAULT model selection changed to: ${newDefaultModel}`);
 
     const currentApiKey = state.getApiKey();
@@ -37,13 +41,23 @@ function handleHeaderModelChange(event) {
 }
 
 /**
- * Updates the header dropdown's selected value (for the *default* model).
+ * Updates the header custom dropdown's selected value (for the *default* model).
  * Called from settingsModal when the *default* model is changed there.
  * @param {string} newModelValue - The new default model value (e.g., 'gpt-4o').
  */
 export function updateHeaderModelSelect(newModelValue) {
-    if (headerModelSelectElement) {
-        headerModelSelectElement.value = newModelValue;
+    if (selectedModelText && customModelDropdownList) {
+        // Update the display text directly with the model value if needed
+        selectedModelText.textContent = newModelValue;
+        
+        // Update aria-selected for accessibility
+        Array.from(customModelDropdownList.children).forEach(item => {
+            if (item.dataset.value === newModelValue) {
+                item.setAttribute('aria-selected', 'true');
+            } else {
+                item.setAttribute('aria-selected', 'false');
+            }
+        });
         console.log(`Header default model dropdown synchronized to: ${newModelValue}`);
     }
 }
@@ -53,7 +67,7 @@ export function updateHeaderModelSelect(newModelValue) {
  * or the default model selector.
  */
 export function updateActiveGptDisplay() {
-    if (!activeGptDisplayElement || !headerModelSelectElement) {
+    if (!activeGptDisplayElement || !customModelDropdown) { // Use customModelDropdown
         console.error("Header display elements not found.");
         return;
     }
@@ -65,7 +79,7 @@ export function updateActiveGptDisplay() {
         activeGptDisplayElement.textContent = ` / ${activeGpt.name}`; // Prepend with '/' for visual separation
         activeGptDisplayElement.title = activeGpt.description || activeGpt.name; // Tooltip
         activeGptDisplayElement.style.display = 'inline'; // Show the name
-        headerModelSelectElement.style.display = 'inline';
+        customModelDropdown.style.display = 'inline-block'; // Ensure custom dropdown is visible
         console.log(`Header updated: Active Custom GPT "${activeGpt.name}"`);
 
         // Determine the correct model string for UI update (should usually be gpt-4o for custom GPTs)
@@ -76,7 +90,7 @@ export function updateActiveGptDisplay() {
         // No Custom GPT active - show default model selector
         activeGptDisplayElement.textContent = '';
         activeGptDisplayElement.style.display = 'none'; // Hide the span
-        headerModelSelectElement.style.display = 'inline-block'; // Ensure default selector is visible
+        customModelDropdown.style.display = 'inline-block'; // Ensure custom dropdown is visible
         console.log("Header updated: No active Custom GPT.");
 
         // Update input UI based on the actual *default* model selected
@@ -119,14 +133,15 @@ function handleHeaderNewChat() {
  * Initializes header components, including default model selector and active GPT display.
  */
 export function initializeHeader() {
-    // Initialize Default Model Selector
-    if (headerModelSelectElement) {
+    // Initialize Default Model Selector (now custom dropdown)
+    if (customModelDropdownButton) { // Use customModelDropdownButton
+        // The event listener for selection is now handled in ui.js
+        // We just need to ensure the initial state is set
         const currentDefaultModel = state.getSelectedModelSetting();
-        headerModelSelectElement.value = currentDefaultModel;
-        headerModelSelectElement.addEventListener('change', handleHeaderModelChange);
-        console.log("Header default model selector initialized.");
+        updateHeaderModelSelect(currentDefaultModel); // Update the custom dropdown display
+        console.log("Header custom model dropdown initialized.");
     } else {
-        console.error("Header default model select element ('headerModelSelect') not found.");
+        console.error("Header custom model dropdown button ('customModelDropdownButton') not found.");
     }
 
     // Initialize Active GPT Display Area

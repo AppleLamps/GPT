@@ -17,10 +17,31 @@ export const apiKeyInput = document.getElementById('apiKey');
 export const geminiApiKeyInput = document.getElementById('geminiApiKey');
 export const xaiApiKeyInput = document.getElementById('xaiApiKey');
 export const ttsInstructionsInput = document.getElementById('ttsInstructionsInput');
-export const modelSelect = document.getElementById('modelSelect');
+export const modelSelect = document.getElementById('modelSelect'); // Keep for settings modal
 
 export const imagePreviewContainer = document.getElementById('imagePreview');
 export const imageInput = document.getElementById('imageInput');
+
+// Custom Dropdown Elements
+export const customModelDropdown = document.getElementById('customModelDropdown');
+export const customModelDropdownButton = document.getElementById('customModelDropdownButton');
+export const customModelDropdownList = document.getElementById('customModelDropdownList');
+export const selectedModelText = document.getElementById('selectedModelText');
+
+// Define the list of models for the custom dropdown
+const models = [
+    { value: 'gpt-4.5-preview', text: 'GPT-4.5' },
+    { value: 'gpt-4.1', text: 'GPT-4.1' },
+    { value: 'gpt-4o', text: 'GPT-4o' },
+    { value: 'o3-mini-high', text: 'o3-mini' },
+    { value: 'o4-mini', text: 'o4-mini' },
+    { value: 'grok-3-latest', text: 'Grok-3' },
+    { value: 'grok-3-mini', text: 'Grok-3 Mini' },
+    { value: 'gemini-2.5-pro-exp-03-25', text: 'Gemini 2.5 Pro' },
+    { value: 'gemini-2.5-flash-preview-04-17', text: 'Gemini 2.5 Flash' },
+    { value: 'gemini-2.0-flash-exp', text: 'Gemini 2.0 Flash' },
+];
+
 
 // --- UI State & Manipulation ---
 
@@ -42,11 +63,18 @@ export function showWelcomeInterface() {
     if (welcomeScreen) welcomeScreen.style.display = 'flex';
     if (messageContainer) messageContainer.style.display = 'none';
     if (messageContainer) messageContainer.innerHTML = '';
+    // Ensure custom dropdown shows default text on welcome screen
+    if (selectedModelText) selectedModelText.textContent = 'Select Model';
 }
 
 export function loadSettingsIntoForm(settings) {
     if (apiKeyInput) apiKeyInput.value = settings.apiKey || '';
     if (modelSelect) modelSelect.value = settings.model || 'gpt-4o';
+    // Update custom dropdown button text based on loaded settings
+    if (selectedModelText) {
+        const selectedOption = Array.from(modelSelect.options).find(option => option.value === settings.model);
+        selectedModelText.textContent = selectedOption ? selectedOption.text : 'Select Model';
+    }
 }
 
 export function adjustTextAreaHeight() {
@@ -342,10 +370,22 @@ export function initializeHelpFaq() {
 }
 
 // Initialize new features
+// Initialize model button in toolbar
+export function initializeModelButton() {
+    const modelButton = document.getElementById('modelButton');
+    if (modelButton) {
+        modelButton.addEventListener('click', () => {
+            // Open settings modal
+            toggleSettingsModal(true);
+        });
+    }
+}
 document.addEventListener('DOMContentLoaded', () => {
     initializeSidebarSearch();
     initializeFileUpload();
     initializeHelpFaq();
+    initializeCustomModelDropdown(); // Initialize the custom dropdown
+    initializeModelButton(); // Initialize the model button in toolbar
     
     // Show onboarding modal for first-time users
     if (!localStorage.getItem('hasSeenOnboarding')) {
@@ -358,3 +398,75 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// --- Custom Model Dropdown Logic ---
+
+// Get the currently selected model from the custom dropdown
+export function getSelectedCustomModel() {
+    const selectedItem = customModelDropdownList?.querySelector('li[aria-selected="true"]');
+    return selectedItem?.dataset.value || 'gpt-4o'; // Default to gpt-4o if nothing selected
+}
+
+function initializeCustomModelDropdown() {
+    if (!customModelDropdownButton || !customModelDropdownList || !selectedModelText) {
+        console.error("Custom model dropdown elements not found.");
+        return;
+    }
+
+    // Populate the dropdown list
+    customModelDropdownList.innerHTML = ''; // Clear existing content
+    models.forEach(model => {
+        const listItem = document.createElement('li');
+        listItem.textContent = model.text;
+        listItem.dataset.value = model.value;
+        listItem.setAttribute('role', 'option');
+        listItem.setAttribute('aria-selected', 'false');
+
+        // Add click listener
+        listItem.addEventListener('click', () => {
+            selectedModelText.textContent = model.text;
+            // Here you would typically update the application state with the selected model value
+            console.log("Model selected:", model.value);
+            // You might dispatch a custom event or call a function in main.js
+            // events.dispatchEvent('modelSelected', { model: model.value });
+
+            // Hide the dropdown
+            customModelDropdownList.classList.remove('visible');
+            customModelDropdownButton.setAttribute('aria-expanded', 'false');
+        });
+
+        customModelDropdownList.appendChild(listItem);
+    });
+
+    // Toggle dropdown visibility
+    customModelDropdownButton.addEventListener('click', () => {
+        const isVisible = customModelDropdownList.classList.contains('visible');
+        customModelDropdownList.classList.toggle('visible', !isVisible);
+        customModelDropdownButton.setAttribute('aria-expanded', !isVisible);
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (event) => {
+        if (customModelDropdown && !customModelDropdown.contains(event.target)) {
+            customModelDropdownList.classList.remove('visible');
+            customModelDropdownButton.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    // Set initial selected model text (if a default is loaded)
+    // This assumes loadSettingsIntoForm is called elsewhere to set the initial model
+    // For now, we can set a default or leave it as "Select Model"
+    // If you have a default model value stored, you would retrieve it here
+    const defaultModelValue = 'gpt-4o'; // Example default
+    const defaultModel = models.find(model => model.value === defaultModelValue);
+    if (defaultModel) {
+        selectedModelText.textContent = defaultModel.text;
+        // Mark the default option as selected in the list (optional, for accessibility)
+        const defaultListItem = customModelDropdownList.querySelector(`li[data-value="${defaultModelValue}"]`);
+        if (defaultListItem) {
+             defaultListItem.setAttribute('aria-selected', 'true');
+        }
+    }
+}
+
+

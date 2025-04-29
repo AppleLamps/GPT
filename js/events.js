@@ -149,7 +149,7 @@ export function handleRegenerateClick(aiMessageElement) {
 }
 
 // Central handler for delegated button clicks
-function handleDelegatedClicks(event) {
+export function handleDelegatedClicks(event) {
     const button = event.target.closest('button');
     if (!button) return;
 

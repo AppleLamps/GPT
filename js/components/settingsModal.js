@@ -13,9 +13,9 @@ const apiKeyInput = document.getElementById('apiKey');
 const modelSelect = document.getElementById('modelSelect'); // Default model select
 const ttsInstructionsInput = document.getElementById('ttsInstructionsInput'); // Select the textarea
 const ttsVoiceSelect = document.getElementById('ttsVoiceSelect');
+// General Settings Elements
 const geminiApiKeyInput = document.getElementById('geminiApiKey');
 const xaiApiKeyInput = document.getElementById('xaiApiKey');
-const enableHtmlSandboxCheckbox = document.getElementById('enableHtmlSandbox');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 // Modal Control Elements
 const closeModalBtn = document.getElementById('closeModalBtn');
@@ -35,7 +35,6 @@ class SettingsModal {
         this.apiKeyInputs = document.querySelectorAll('.api-key-input');
         this.modelSelect = document.getElementById('modelSelect');
         this.ttsInstructionsInput = document.getElementById('ttsInstructionsInput'); // Corrected ID based on top-level selection
-        this.sandboxToggle = document.getElementById('enableHtmlSandbox'); // Corrected ID based on top-level selection
         this.saveButton = document.getElementById('saveSettingsBtn'); // Use the correct ID
         this.closeButton = document.getElementById('closeModalBtn'); // Use the correct ID
 
@@ -159,8 +158,7 @@ class SettingsModal {
             geminiApiKey: document.getElementById('geminiApiKey').value.trim(),
             xaiApiKey: document.getElementById('xaiApiKey').value.trim(),
             defaultModel: this.modelSelect.value,
-            ttsInstructions: this.ttsInstructionsInput.value.trim(),
-            enableSandbox: this.sandboxToggle.checked
+            ttsInstructions: this.ttsInstructionsInput.value.trim()
         };
 
         try {
@@ -188,12 +186,16 @@ class SettingsModal {
         // Load current settings
         const currentSettings = state.loadSettings();
         
-        document.getElementById('apiKey').value = currentSettings.apiKey || '';
-        document.getElementById('geminiApiKey').value = currentSettings.geminiApiKey || '';
-        document.getElementById('xaiApiKey').value = currentSettings.xaiApiKey || '';
+        // Use the correct input IDs as present in the HTML
+        const apiKeyInput = document.getElementById('apiKey_old');
+        const geminiApiKeyInput = document.getElementById('geminiApiKey_old');
+        const xaiApiKeyInput = document.getElementById('xaiApiKey_old');
+
+        if (apiKeyInput) apiKeyInput.value = currentSettings.apiKey || '';
+        if (geminiApiKeyInput) geminiApiKeyInput.value = currentSettings.geminiApiKey || '';
+        if (xaiApiKeyInput) xaiApiKeyInput.value = currentSettings.xaiApiKey || '';
         this.modelSelect.value = currentSettings.defaultModel || 'gpt-4o';
         this.ttsInstructionsInput.value = currentSettings.ttsInstructions || '';
-        this.sandboxToggle.checked = currentSettings.enableSandbox || false;
 
         // Show first tab by default
         this.switchTab('api-keys');
@@ -291,7 +293,6 @@ function loadGeneralSettingsIntoForm() {
     if (ttsVoiceSelect) ttsVoiceSelect.value = currentSettings.ttsVoice || 'alloy';
     if (geminiApiKeyInput) geminiApiKeyInput.value = currentSettings.geminiApiKey || '';
     if (xaiApiKeyInput) xaiApiKeyInput.value = currentSettings.xaiApiKey || '';
-    if (enableHtmlSandboxCheckbox) enableHtmlSandboxCheckbox.checked = currentSettings.enableHtmlSandbox;
     
     // Set values for old inputs
     if (apiKeyOld) apiKeyOld.value = currentSettings.apiKey || '';
@@ -338,9 +339,8 @@ function handleGeneralSettingsSave() {
     const newTtsVoice = ttsVoiceSelect?.value ?? 'alloy';
     const newGeminiApiKey = (geminiApiKeyInput?.value.trim() || geminiApiKeyOld?.value.trim() || '');
     const newXaiApiKey = (xaiApiKeyInput?.value.trim() || xaiApiKeyOld?.value.trim() || '');
-    const newEnableHtmlSandbox = enableHtmlSandboxCheckbox?.checked ?? false;
 
-    state.saveSettings(newApiKey, newModel, newTtsInstructions, newGeminiApiKey, newXaiApiKey, newTtsVoice, newEnableHtmlSandbox);
+    state.saveSettings(newApiKey, newModel, newTtsInstructions, newGeminiApiKey, newXaiApiKey, newTtsVoice);
 
     showNotification('General settings saved!', 'success');
 

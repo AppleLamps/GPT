@@ -7,6 +7,7 @@ import { openCreatorModal } from '../customGpt/creatorScreen.js';
 import { exportGpt, importGptFromFile } from "../customGpt/customGptManager.js"; // <<< NEW: Import GPT manager functions
 // Import UI functions needed from other components/modules
 import { showWelcomeInterface, showChatInterface, addUserMessage, renderMessagesFromHistory, clearMessageListUI } from './messageList.js';
+import { showView } from '../main.js';
 import { removeImagePreview, updateInputUIForModel, clearMessageInput, renderFilePreviews } from './chatInput.js';
 import { showNotification } from '../notificationHelper.js';
 import { escapeHTML } from '../utils.js';
@@ -20,6 +21,7 @@ const sidebarElement = document.getElementById('sidebar');
 const overlayElement = document.getElementById('overlay');
 const menuButton = document.getElementById('menuButton');
 const newChatBtn = document.getElementById('newChatBtn');
+const imageGenPageBtn = document.getElementById('imageGenPageBtn'); // Reference to the new Image Generation button
 
 // Chat List Container
 const chatListContainer = document.getElementById('chatListContainer');
@@ -82,6 +84,13 @@ function toggleSidebar(visible) {
 }
 
 function handleOverlayClick() {
+    toggleSidebar(false);
+}
+
+// Handler for the Image Generation sidebar button
+function handleNavigateToImageGen() {
+    console.log('Navigating to Image Generation page...');
+    showView('imageGenPage'); // Use the central showView function
     toggleSidebar(false);
 }
 
@@ -576,6 +585,7 @@ export function initializeSidebar() {
     menuButton?.addEventListener('click', () => toggleSidebar(true));
     overlayElement?.addEventListener('click', () => toggleSidebar(false));
     newChatBtn?.addEventListener('click', handleNewChat);
+    imageGenPageBtn?.addEventListener('click', handleNavigateToImageGen); // Add event listener for the Image Generation button
     addCustomGptBtn?.addEventListener('click', () => openCreatorModal(null)); // <<< Open creator for NEW
     
     // Update logout button based on current auth state

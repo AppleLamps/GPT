@@ -430,6 +430,8 @@ export function removeTypingIndicator() {
  * @param {Array} history - The chat history array.
  */
 export function renderMessagesFromHistory(history) {
+    // messageContainerElement is now managed by showView in main.js, but we still need it to append messages
+    const messageContainerElement = document.getElementById('messageContainer');
     if (!messageContainerElement) return;
     clearMessageListUI();
 

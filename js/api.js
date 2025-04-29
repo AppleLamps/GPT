@@ -27,6 +27,27 @@ const TTS_API_URL = 'https://api.openai.com/v1/audio/speech';
 const IMAGE_GENERATION_API_URL = 'https://api.openai.com/v1/images/generations';
 const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
 
+async function callImageGenerationFunction(prompt, model, images = null) { // Keep parameters
+    console.log(`Calling image generation function via Supabase. Model: ${model}`); // Log the specific model
+    if (!supabase) { /* ... error handling ... */ }
+
+    const body = { prompt, model }; // Ensure 'model' is included
+    if (images && Array.isArray(images) && images.length > 0) {
+        body.images = images;
+    }
+
+    // Ensure the function name here matches your deployed function
+    const { data, error } = await supabase.functions.invoke('generate-image', {
+        body: body
+    });
+
+    // ... (keep existing error handling and response processing for b64_json) ...
+    if (error) { throw new Error(/* ... */); }
+    if (data && data.error) { throw new Error(data.error); }
+    if (!data || !data.b64_json) { throw new Error(/* ... */); }
+    return data;
+}
+
 // Initialize OpenAI client - NO LONGER NEEDED HERE FOR IMAGE GEN
 /*
 function getOpenAIClient() {
@@ -45,11 +66,10 @@ function getOpenAIClient() {
  * @param {boolean} useWebSearch - Whether web search was toggled ON for this message.
  */
 export async function routeApiCall(selectedModelSetting, useWebSearch) {
-    // Don't check for API key here - we'll check when we know which model is being used
-    
     const activeConfig = state.getActiveCustomGptConfig();
     const history = state.getChatHistory();
     const isImageGenMode = state.getIsImageGenerationMode();
+    const apiKey = state.getApiKey();
 
     // --- Determine effective settings based on activeConfig ---
     let finalModel = selectedModelSetting;
@@ -57,64 +77,16 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
     let knowledgeContent = "";
     let capabilities = { webSearch: useWebSearch };
 
-    const lastUserMessageEntry = history.filter(m => m.role === 'user').pop(); // Get the last user message from history
+    const lastUserMessageEntry = history.filter(m => m.role === 'user').pop();
 
-    if (activeConfig) {
-        console.log(`Using Custom GPT Config: "${activeConfig.name}"`);
-        finalSystemPrompt = activeConfig.instructions || null;
-
-        if (activeConfig.knowledgeFiles && activeConfig.knowledgeFiles.length > 0) {
-            knowledgeContent = activeConfig.knowledgeFiles
-                .filter(kf => kf.content && !kf.error)
-                .map(kf => `--- START Knowledge: ${kf.name} ---\n${kf.content}\n--- END Knowledge: ${kf.name} ---`)
-                .join('\n\n');
-            if (knowledgeContent) {
-                console.log(`Injecting content from ${activeConfig.knowledgeFiles.filter(kf => kf.content && !kf.error).length} knowledge file(s).`);
-            }
-        }
-
-        if (activeConfig.capabilities && activeConfig.capabilities.webSearch !== undefined) {
-            capabilities.webSearch = activeConfig.capabilities.webSearch;
-            console.log(`Web search capability from config: ${capabilities.webSearch}`);
-        }
-
-        // Force gpt-4o if config uses features not compatible with o3-mini
-        if (finalModel === 'o3-mini-high' && (lastUserMessageEntry?.imageData || capabilities.webSearch || knowledgeContent || finalSystemPrompt)) {
-            console.warn(`Custom GPT "${activeConfig.name}" uses features likely requiring gpt-4o. Forcing model to gpt-4o.`);
-            finalModel = 'gpt-4o';
-        }
-        // Ensure web search is only active if the final model is gpt-4o or gpt-4o-latest
-        if (finalModel !== 'gpt-4o' && finalModel !== 'gpt-4o-latest') {
-            capabilities.webSearch = false;
-        }
-
-    } else {
-        console.log("Using default chat behavior (no Custom GPT config active).");
-        finalModel = selectedModelSetting;
-        capabilities.webSearch = useWebSearch;
-        // Ensure web search is only active if the final model is gpt-4o or gpt-4o-latest
-        if (finalModel !== 'gpt-4o' && finalModel !== 'gpt-4o-latest') {
-            capabilities.webSearch = false;
-        }
-    }
-    // --- End Determining Settings ---
-
+    // Early validation
     if (!history.length || !lastUserMessageEntry) {
         console.error("Cannot call API: No user message history found.");
         showNotification("Please type a message or upload an image first.", 'info');
         return;
     }
 
-    const lastUserMessageContent = lastUserMessageEntry.content || "";
-    const effectiveInputExists = lastUserMessageContent || lastUserMessageEntry.imageData || knowledgeContent || finalSystemPrompt;
-
-    if (!effectiveInputExists) {
-        console.error("Cannot call API: No effective user input (text, image, knowledge, or system prompt) in the last turn.");
-        showNotification("Please type a message, upload an image, or ensure your Custom GPT provides context.", 'info');
-        return;
-    }
-
-    // Check for image generation mode first
+    // Handle image generation mode first
     if (isImageGenMode) {
         console.log(`Routing to Supabase Edge Function 'generate-image'`);
 
@@ -154,10 +126,6 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
 
         try {
             // Call the Supabase Edge Function
-            const { data, error } = await supabase.functions.invoke('generate-image', {
-                body: { prompt: lastUserMessageContent } // Pass prompt in the body
-            });
-
             // <<< REMOVE PLACEHOLDER CLASS >>>
             if (aiMessageElement) aiMessageElement.classList.remove('image-placeholder');
 
@@ -243,40 +211,66 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
         return; // Stop further processing after handling image generation
     }
 
-    // --- API Routing for chat/responses ---
-    const isGeminiModel = finalModel.startsWith('gemini-'); // Check if it's a Gemini model
-    const isGrokModel = finalModel.startsWith('grok-'); // Check if it's a Grok model
+    // --- End Handling Image Generation ---
 
-    if (isGrokModel) {
-        console.log(`Routing to Grok API for model: ${finalModel}`);
-        // Get X.AI API key for Grok models
-        const xaiApiKey = state.getXaiApiKey();
-        if (!xaiApiKey) {
-            showNotification("Error: X.AI API key is required for Grok models. Please add it in Settings.", 'error');
+    // Configure based on active Custom GPT
+    if (activeConfig) {
+        console.log(`Using Custom GPT Config: "${activeConfig.name}"`);
+        finalSystemPrompt = activeConfig.instructions || null;
+        if (activeConfig.knowledgeFiles?.length > 0) {
+            knowledgeContent = activeConfig.knowledgeFiles
+                .filter(kf => kf.content && !kf.error)
+                .map(kf => `--- START Knowledge: ${kf.name} ---\n${kf.content}\n--- END Knowledge: ${kf.name} ---`)
+                .join('\n\n');
+        }
+        if (activeConfig.capabilities?.webSearch !== undefined) {
+            capabilities.webSearch = activeConfig.capabilities.webSearch;
+        }
+    }
+
+    // Perform web search first if requested (works with any model)
+    if (capabilities.webSearch) {
+        console.log("Web search requested - Starting web search");
+        
+        if (!apiKey) {
+            showNotification("Error: API key is required for web search.", 'error');
             return;
         }
 
-        // Grok models use Chat Completions API format but with different endpoint
-        const messagesPayload = buildMessagesPayload(history, finalSystemPrompt, knowledgeContent);
-        const requestBody = {
+        const webSearchRequestBody = {
             model: finalModel,
-            messages: messagesPayload,
+            input: buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt),
             stream: true,
-            reasoning: true // Request reasoning content
-            // Use high reasoning effort only for grok-3-mini if needed
-            // ...(finalModel === 'grok-3-mini-beta' && { reasoning_effort: 'high' })
+            tools: [{ type: "web_search_preview" }]
         };
 
-        await fetchGrokCompletions(xaiApiKey, requestBody);
-        return;
+        let webSearchResults = null;
+        try {
+            const searchResponse = await fetchResponsesApi(apiKey, webSearchRequestBody, true);
+            webSearchResults = searchResponse?.webSearchResults;
+            if (webSearchResults) {
+                console.log("Web search completed successfully");
+                // Add search results to knowledge content for the main model
+                knowledgeContent = (knowledgeContent ? knowledgeContent + "\n\n" : "") +
+                    "--- Web Search Results ---\n" +
+                    webSearchResults.results.map(r => 
+                        `[${r.title}]\n${r.url}\n${r.content}`
+                    ).join("\n\n") +
+                    "\n--- End Web Search Results ---";
+            }
+        } catch (error) {
+            console.error("Web search failed:", error);
+            showNotification("Web search failed, continuing with base model response", 'warning');
+        }
     }
 
-    if (isGeminiModel) {
+    // Now proceed with the main model call (existing code for different model types)
+    if (finalModel.startsWith('gemini-')) {
         console.log(`Routing to Gemini API for model: ${finalModel}`);
-        const geminiApiKey = state.getGeminiApiKey(); // Get Gemini key
+        const geminiApiKey = state.getGeminiApiKey();
         if (!geminiApiKey) {
             showNotification("Error: Google Gemini API key is required for Gemini models. Please add it in Settings.", 'error');
-            return; // Stop if key is missing
+            return;
         }
 
         // Build Gemini Payloads using helpers
@@ -319,67 +313,48 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
 
     } else if (finalModel === 'o3-mini-high') {
         console.log("Routing to Chat Completions API for o3-mini");
-        
-        // Check for OpenAI API key only when needed for OpenAI models
-        const apiKey = state.getApiKey();
         if (!apiKey) {
-            showNotification("Error: OpenAI API key is required for o3-mini model. Please add it in Settings.", 'error');
+            showNotification("Error: OpenAI API key is required. Please add it in Settings.", 'error');
             return;
         }
-        
         // Pass the specific last user message entry for modification if needed
         const messagesPayload = buildMessagesPayload(history, finalSystemPrompt, knowledgeContent);
         state.setPreviousResponseId(null);
         await fetchChatCompletions(apiKey, messagesPayload);
 
-    } else if (finalModel === 'o4-mini') {
-        console.log("Routing to Responses API for o4-mini with high reasoning");
-        
-        // Check for OpenAI API key only when needed for OpenAI models
-        const apiKey = state.getApiKey();
-        if (!apiKey) {
-            showNotification("Error: OpenAI API key is required for o4-mini model. Please add it in Settings.", 'error');
+    } else if (finalModel.startsWith('grok-')) {
+        console.log(`Routing to Grok API for model: ${finalModel}`);
+        // Get X.AI API key for Grok models
+        const xaiApiKey = state.getXaiApiKey();
+        if (!xaiApiKey) {
+            showNotification("Error: X.AI API key is required for Grok models. Please add it in Settings.", 'error');
             return;
         }
-        
-        const previousId = state.getPreviousResponseId();
-        let inputPayload = buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt);
-        if (!inputPayload) {
-            showNotification("Failed to prepare message data for API.", "error");
-            return;
-        }
+
+        // Grok models use Chat Completions API format but with different endpoint
+        const messagesPayload = buildMessagesPayload(history, finalSystemPrompt, knowledgeContent);
         const requestBody = {
-            model: "o4-mini",
-            input: inputPayload,
+            model: finalModel,
+            messages: messagesPayload,
             stream: true,
-            reasoning: { effort: "high" },
-            ...(previousId && { previous_response_id: previousId }),
-            ...(capabilities.webSearch && { tools: [{ type: "web_search_preview" }] })
+            reasoning: true // Request reasoning content
+            // Use high reasoning effort only for grok-3-mini if needed
+            // ...(finalModel === 'grok-3-mini-beta' && { reasoning_effort: 'high' })
         };
-        await fetchResponsesApi(apiKey, requestBody);
 
-    } else if (finalModel === 'gpt-4o' || finalModel === 'gpt-4.1' || finalModel === 'gpt-4.5-preview') {
-        console.log(`Routing to Responses API for ${finalModel} ${capabilities.webSearch ? 'with Web Search' : ''}`);
-        
-        // Check for OpenAI API key only when needed for OpenAI models
-        const apiKey = state.getApiKey();
+        await fetchGrokCompletions(xaiApiKey, requestBody);
+    } else {
+        // Handle other OpenAI models (GPT-4o, etc.)
+        console.log(`Routing to Responses API for model: ${finalModel}`);
         if (!apiKey) {
-            showNotification("Error: OpenAI API key is required for GPT models. Please add it in Settings.", 'error');
+            showNotification("Error: OpenAI API key is required. Please add it in Settings.", 'error');
             return;
         }
-        
         const previousId = state.getPreviousResponseId();
-
-        let inputPayload = buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt);
-        if (!inputPayload) {
-            showNotification("Failed to prepare message data for API.", "error");
-            return;
-        }
-
         const requestBody = {
             model: finalModel === 'gpt-4.1' ? 'gpt-4.1' :
                    finalModel === 'gpt-4.5-preview' ? 'gpt-4.5-preview' : 'gpt-4o',
-            input: inputPayload,
+            input: buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt),
             stream: true,
             temperature: 0.8,
             ...(previousId && { previous_response_id: previousId }),
@@ -387,10 +362,6 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
         };
 
         await fetchResponsesApi(apiKey, requestBody);
-
-    } else {
-        console.error(`Effective model "${finalModel}" routing not implemented.`);
-        showNotification(`Model "${finalModel}" routing not implemented.`, 'error');
     }
 }
 
@@ -406,26 +377,40 @@ export async function fetchSpeechFromChat(text, voice = 'alloy', format = 'mp3',
     }
 
     try {
-        const openai = getOpenAIClient();
-        if (!openai) {
-            throw new Error("Failed to initialize OpenAI client");
-        }
+        const requestBody = {
+            model: 'tts-1',
+            input: instructions ? `${instructions}\n\n${text}` : text,
+            voice: voice,
+            response_format: format
+        };
 
-        const response = await openai.chat.completions.create({
-            model: "gpt-4o-audio-preview",
-            modalities: ["text", "audio"],
-            audio: { voice, format },
-            messages: [{ role: "user", content: instructions ? `${instructions}\n\n${text}` : text }],
+        const response = await fetch(TTS_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(requestBody)
         });
 
-        const base64Data = response.choices?.[0]?.message?.audio?.data;
-        if (!base64Data) return null;
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: { message: "Failed to parse error response." } }));
+            console.error("TTS API Error Response:", errorData);
+            let errorMessage = errorData.error?.message || `HTTP error! Status: ${response.status}`;
+            if (response.status === 401) {
+                errorMessage = "Authentication Error: Invalid API Key.";
+            }
+            showNotification(`Error: ${errorMessage}`, 'error', 5000);
+            throw new Error(errorMessage);
+        }
 
-        return new Blob([Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))], { type: `audio/${format}` });
+        // Get the audio data as a blob
+        const audioBlob = await response.blob();
+        return audioBlob;
+
     } catch (error) {
         console.error('Error fetching speech:', error);
-        showNotification('Failed to generate speech. Please try again.', 'error');
-        return null;
+        throw error;
     }
 }
 
@@ -775,10 +760,19 @@ async function fetchResponsesApi(apiKey, requestBody) {
             const finalRawText = getAccumulatedRawText();
             const finalHtml = parseFinalHtml();
             finalizeAIMessageContent(aiMessageElement, finalHtml || (webSearchResults ? "" : "[Incomplete Response]"), !!webSearchResults);
-            if (finalRawText) state.addMessageToHistory({ role: "assistant", content: finalRawText });
+
+            // Add potentially incomplete main content to history
+            if (finalRawText || reasoningContent) { // Add if either main or reasoning exists
+                 const existingEntry = state.getChatHistory().find(m => m.role === 'assistant' && m.content === finalRawText);
+                 if (!existingEntry) {
+                     state.addMessageToHistory({ role: "assistant", content: finalRawText });
+                 }
+            }
+            // Setup actions even if incomplete
             setupMessageActions(aiMessageElement, finalRawText);
         }
-        removeTypingIndicator(); // Final ensure removal
+        // Ensure indicator is always removed if it wasn't already
+        removeTypingIndicator();
     }
 }
 
@@ -1145,3 +1139,5 @@ async function fetchGrokCompletions(apiKey, requestBody) {
         removeTypingIndicator();
     }
 }
+
+export { callImageGenerationFunction };

@@ -1,0 +1,37 @@
+/* Styles specific to the image generation page */
+
+#imageGenInputContainer {
+    padding: 1rem; /* Keep original padding */
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    margin-bottom: 0; /* Remove extra space below */
+    max-width: 900px; /* Limit width of the container */
+    margin-left: auto; /* Center the container */
+    margin-right: auto; /* Center the container */
+}
+
+#imageGenInputContainer .input-row {
+    align-items: center; /* Vertically align items */
+    /* Remove justify-content: center; */
+    gap: 0.5rem; /* Restore or adjust gap as needed */
+}
+
+/* Remove override for textarea - let it grow naturally within the centered container */
+/* #imageGenInputContainer .input-row .input-box { ... } */
+
+#imageGenInputContainer #imageGenImageButton {
+    width: 36px; /* Match send button size */
+    height: 36px; /* Match send button size */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+#imageGenInputContainer #imageGenImageButton svg {
+    width: 18px; /* Match send button SVG size */
+    height: 18px; /* Match send button SVG size */
+}
+
+#imageGenInputContainer .bottom-toolbar {
+    display: none; /* Hide the three icons below the input bar */
+}

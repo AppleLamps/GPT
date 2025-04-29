@@ -39,6 +39,70 @@
     color: var(--text-muted);
 }
 
+/* --- Image Generation Page Styles --- */
+#imageGenPageContainer {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center content horizontally */
+    gap: 20px; /* Space between elements */
+    max-width: 800px; /* Limit width for better readability */
+    margin: 0 auto; /* Center the container */
+}
+
+#imageGenPageContainer h2 {
+    color: var(--text-primary);
+    margin-bottom: 0; /* Adjust margin as gap handles spacing */
+}
+
+#imageGenPromptInput {
+    width: 100%; /* Take full width of the container */
+    min-height: 100px; /* Provide a decent size for prompt input */
+    padding: 12px;
+    border: 1px solid var(--border-primary);
+    border-radius: 1.5rem;
+    background-color: var(--background-secondary);
+    color: var(--text-primary);
+    font-size: 1rem;
+    resize: vertical; /* Allow vertical resizing */
+}
+
+#imageGenSubmitBtn {
+    padding: 10px 20px;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+#imageGenSubmitBtn:hover {
+    background-color: var(--accent-hover);
+}
+
+#imageDisplayArea {
+    width: 100%; /* Take full width */
+    min-height: 200px; /* Placeholder height */
+    border: 1px dashed var(--border-secondary);
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-muted);
+    font-style: italic;
+    background-color: var(--background-secondary);
+    overflow: hidden; /* Hide overflowing images */
+}
+
+#imageDisplayArea img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain; /* Ensure image fits within the area */
+}
+
 .header-action {
     background: none;
     border: none;
@@ -594,7 +658,7 @@ body.dark-mode .ai-message-content code:not(pre code) { /* Dark mode adjustment 
     color: #d32f2f;
 }
 
-.settings-button {
+.settings-button, #imageGenPageBtn {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -904,7 +968,7 @@ body.dark-mode .notification {
     min-width: 150px; /* Ensure minimum width */
     text-align: center; /* Center selected text */
     position: relative;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease; /* Added box-shadow transition */
 
     /* Custom dropdown arrow - using encoded SVG with hardcoded default color */
     background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236c757d%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
@@ -916,6 +980,7 @@ body.dark-mode .notification {
 .header-model-select:hover {
     border-color: var(--border-secondary);
     background-color: var(--background-tertiary);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); /* Subtle shadow on hover */
 }
 
 .header-model-select:focus {
@@ -952,6 +1017,7 @@ body.dark-mode .header-model-select {
 body.dark-mode .header-model-select:hover {
     border-color: var(--dark-border-secondary);
     background-color: var(--dark-background-tertiary);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); /* Subtle shadow on hover */
 }
 
 body.dark-mode .header-model-select:focus {
@@ -972,6 +1038,132 @@ body.dark-mode .header-model-select optgroup {
 /* Remove the old ::after rule if it exists */
 .header-model-select::after {
     content: none;
+}
+
+/* Settings Modal Select */
+.settings-select {
+    width: 100%;
+    padding: 10px 12px; /* Increased padding */
+    border: 1px solid var(--border-primary);
+    border-radius: 6px; /* Consistent border radius */
+    font-size: 14px;
+    background-color: var(--background-primary);
+    color: var(--text-primary);
+    appearance: none; /* Remove default arrow */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236c757d%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+    background-repeat: no-repeat;
+    background-position: right 12px top 50%; /* Adjusted position */
+    background-size: 10px auto;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-select:hover {
+    border-color: var(--border-secondary);
+}
+
+.settings-select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-color-light);
+}
+
+/* Dark mode adjustments for settings select */
+body.dark-mode .settings-select {
+    background-color: var(--dark-background-primary);
+    border-color: var(--dark-border-primary);
+    color: var(--dark-text-primary);
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23adb5bd%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+}
+
+body.dark-mode .settings-select:hover {
+    border-color: var(--dark-border-secondary);
+}
+
+body.dark-mode .settings-select:focus {
+    border-color: var(--dark-accent-color);
+    box-shadow: 0 0 0 2px var(--dark-accent-color-light);
+}
+
+/* Custom Model Dropdown */
+.custom-dropdown {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle; /* Align with other header elements */
+}
+
+.custom-dropdown-button {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 18px;
+    padding: 6px 15px;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    outline: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.custom-dropdown-button:hover {
+    border-color: var(--border-secondary);
+    background-color: var(--background-tertiary);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.custom-dropdown-button:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-color-light);
+}
+
+.custom-dropdown-button svg {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.custom-dropdown-button[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+}
+
+.custom-dropdown-list {
+    position: absolute;
+    top: calc(100% + 8px); /* Position below the button */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--background-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    list-style: none;
+    padding: 8px 0;
+    margin: 0;
+    min-width: 200px; /* Ensure a readable width */
+    max-height: 300px; /* Limit height and add scrolling */
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100; /* Ensure it's above other content */
+    display: none; /* Hidden by default */
+}
+
+.custom-dropdown-list.visible {
+    display: block;
+}
+
+.custom-dropdown-list li {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-primary);
+    transition: background-color 0.2s ease;
+}
+
+.custom-dropdown-list li:hover {
+    background-color: var(--background-secondary);
 }
 
 /* Custom GPT display styling */

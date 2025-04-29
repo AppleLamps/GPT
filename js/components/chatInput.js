@@ -540,17 +540,9 @@ export function removeImagePreview() {
 // --- (Keep these functions exactly as they were) ---
 function handleSearchToggle() {
     if (!searchButton) return;
-    const activeGpt = state.getActiveCustomGptConfig();
-    const effectiveModel = activeGpt ? 'gpt-4o' : state.getSelectedModelSetting(); // Determine effective model
-    if (effectiveModel === 'gpt-4o') {
-        const isActive = state.toggleWebSearch();
-        searchButton.classList.toggle('active', isActive);
-        showNotification(`Web search for next message: ${isActive ? 'ON' : 'OFF'}`, 'info', 1500);
-    } else {
-        searchButton.classList.remove('active');
-        state.setIsWebSearchEnabled(false); // Ensure state matches UI if model changed
-        showNotification("Web search requires GPT-4o.", 'warning');
-    }
+    const isActive = state.toggleWebSearch();
+    searchButton.classList.toggle('active', isActive);
+    showNotification(`Web search for next message: ${isActive ? 'ON' : 'OFF'}`, 'info', 1500);
 }
 export function updateInputUIForModel(activeGpt) { // Pass activeGpt config object
     const isDeepResearchModeActive = state.getIsDeepResearchMode(); // <<< ADD: Check deep research mode
@@ -590,7 +582,7 @@ export function updateInputUIForModel(activeGpt) { // Pass activeGpt config obje
     if (searchButton) {
         const canUseWebSearch = !isDeepResearchModeActive && (isGpt4o || isGpt41 || isGpt45Preview);
         searchButton.disabled = !canUseWebSearch;
-        searchButton.title = canUseWebSearch ? "Toggle Web Search" : (isDeepResearchModeActive ? "Web Search disabled in Deep Research mode" : "Web Search only available for GPT-4o/GPT-4.1/GPT-4.5");
+        searchButton.title = canUseWebSearch ? "Toggle Web Search" : (isDeepResearchModeActive ? "Web Search disabled in Deep Research mode" : "Web Search requires GPT-4o, GPT-4.1, or GPT-4.5");
         if (!canUseWebSearch) {
             searchButton.classList.remove('active');
             // Ensure state matches UI if mode changed
