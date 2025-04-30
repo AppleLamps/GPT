@@ -451,6 +451,8 @@ async function handleSendMessage() {
 
         // Call API
         console.log("Calling api.routeApiCall for normal chat...");
+        // <<< ADDED: Log the model being passed >>>
+        console.log(`[chatInput.js] Passing model to routeApiCall: ${selectedModelSetting}`);
         await api.routeApiCall(selectedModelSetting, useWebSearch);
 
         // Reset UI State
