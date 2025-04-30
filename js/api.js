@@ -218,8 +218,8 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
         // <<< ADDED: Log activeConfig and finalModel before potential override >>>
         console.log(`[api.js] Active config found: ${activeConfig.name}. Initial finalModel: ${finalModel}`);
         console.log("[api.js] Active config details:", JSON.stringify(activeConfig, null, 2));
+        console.log(`Using Custom GPT Config: "${activeConfig.name}"`);
 
-        console.log(`Using Custom GPT Config: \\\"${activeConfig.name}\\\"\`);
         finalSystemPrompt = activeConfig.instructions || null;
         if (activeConfig.knowledgeFiles?.length > 0) {
             knowledgeContent = activeConfig.knowledgeFiles
