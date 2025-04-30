@@ -215,7 +215,11 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
 
     // Configure based on active Custom GPT
     if (activeConfig) {
-        console.log(`Using Custom GPT Config: "${activeConfig.name}"`);
+        // <<< ADDED: Log activeConfig and finalModel before potential override >>>
+        console.log(`[api.js] Active config found: ${activeConfig.name}. Initial finalModel: ${finalModel}`);
+        console.log(\"[api.js] Active config details:\", JSON.stringify(activeConfig, null, 2));
+
+        console.log(`Using Custom GPT Config: \"${activeConfig.name}\"`);
         finalSystemPrompt = activeConfig.instructions || null;
         if (activeConfig.knowledgeFiles?.length > 0) {
             knowledgeContent = activeConfig.knowledgeFiles
@@ -225,6 +229,15 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
         }
         if (activeConfig.capabilities?.webSearch !== undefined) {
             capabilities.webSearch = activeConfig.capabilities.webSearch;
+        }
+        // <<< ADDED: Explicitly check if activeConfig.model exists and log if overriding >>>
+        if (activeConfig.model && activeConfig.model !== finalModel) {
+            console.warn(`[api.js] Overriding selected model (${finalModel}) with active config model (${activeConfig.model})`);
+            finalModel = activeConfig.model;
+        } else if (activeConfig.model) {
+            console.log(`[api.js] Active config model (${activeConfig.model}) matches selected model.`);
+        } else {
+            console.log(`[api.js] Active config does not specify a model. Using selected model: ${finalModel}`);
         }
     }
 
