@@ -217,9 +217,9 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
     if (activeConfig) {
         // <<< ADDED: Log activeConfig and finalModel before potential override >>>
         console.log(`[api.js] Active config found: ${activeConfig.name}. Initial finalModel: ${finalModel}`);
-        console.log(\"[api.js] Active config details:\", JSON.stringify(activeConfig, null, 2));
+        console.log("[api.js] Active config details:", JSON.stringify(activeConfig, null, 2));
 
-        console.log(`Using Custom GPT Config: \"${activeConfig.name}\"`);
+        console.log(`Using Custom GPT Config: \\\"${activeConfig.name}\\\"\`);
         finalSystemPrompt = activeConfig.instructions || null;
         if (activeConfig.knowledgeFiles?.length > 0) {
             knowledgeContent = activeConfig.knowledgeFiles
@@ -769,7 +769,8 @@ async function fetchResponsesApi(apiKey, requestBody) {
         if (!streamEnded && aiMessageElement) {
             console.warn("Stream ended unexpectedly (Responses API), finalizing with accumulated content.");
             removeTypingIndicator(); // Ensure removal
-            if (webSearchResults) processWebSearchResults(webSearchResults, aiMessageElement); // Render pending results if any
+            // Render pending web search results if any
+            if (webSearchResults) processWebSearchResults(webSearchResults, aiMessageElement);
             const finalRawText = getAccumulatedRawText();
             const finalHtml = parseFinalHtml();
             finalizeAIMessageContent(aiMessageElement, finalHtml || (webSearchResults ? "" : "[Incomplete Response]"), !!webSearchResults);
@@ -1094,14 +1095,15 @@ async function fetchGrokCompletions(apiKey, requestBody) {
                     reasoningSection.innerHTML = escapeHTML(reasoningContent);
                 }
             }
-             // Ensure actions are set up even if only reasoning content exists
-             if (!hasContent && reasoningContent && aiMessageElement) {
+
+            // Ensure actions are set up even if only reasoning content exists
+            if (!hasContent && reasoningContent && aiMessageElement) {
                  const finalRawText = getAccumulatedRawText(); // Will be empty if no main content
                  if (!state.getChatHistory().some(m => m.role === 'assistant' && m.content === finalRawText)) {
                      state.addMessageToHistory({ role: "assistant", content: finalRawText }); // Add empty message if needed
                  }
                  setupMessageActions(aiMessageElement, finalRawText); // Setup actions even for empty main content
-             }
+            }
 
         } else {
              console.log("Grok stream finished without creating a message element (no deltas received).");
