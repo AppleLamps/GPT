@@ -1,13 +1,12 @@
 /* Styles defining the main page structure and layout */
 
 /* Main content area adjustments if sidebar is considered */
-/* .main-content {
-    transition: margin-left 0.3s ease; /* Smooth transition when sidebar opens/closes */
-/* } */
-
-/* .main-content.sidebar-visible {
-    margin-left: var(--sidebar-width); /* Push content over when sidebar is open */
-/* } */
+.main-content {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 0;
+}
 
 /* Header */
 .header {
@@ -95,8 +94,8 @@
 
 /* Chat container */
 .chat-container {
-    display: flex;
-    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
     /* Adjust height dynamically based on actual input container height */
     height: calc(100dvh - var(--header-height) - var(--dynamic-input-area-height, var(--input-area-height)));
     /* Fallback */
@@ -276,13 +275,11 @@
 
 /* Mobile Optimizations */
 @media (max-width: 768px) {
-    .chat-container {
-        padding: 0 1rem 0.5rem 1rem;
-        /* Ensure height calculation uses dvh and dynamic variable */
-        height: calc(100dvh - var(--header-height) - var(--dynamic-input-area-height, var(--input-area-height)));
-        /* Fallback */
-        height: calc(100vh - var(--header-height) - var(--dynamic-input-area-height, var(--input-area-height)));
-        scroll-padding-bottom: 0.5rem;
+    .input-container {
+        padding: 0.5rem;
+        padding-bottom: 0.1rem; /* Reduce extra space below input on mobile */
+        background-color: transparent;
+        border-top: none;
     }
 
     .modal-content {
@@ -349,11 +346,10 @@
     }
 }
 
-/* Further adjustments for smaller screens if needed */
 @media (max-width: 600px) {
     .input-container {
-        padding: 0.25rem; /* Adjust padding for very small screens */
-        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+        padding: 0.25rem;
+        padding-bottom: 0.1rem; /* Reduce extra space below input on very small screens */
     }
 
     .input-row {
