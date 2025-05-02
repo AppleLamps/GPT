@@ -35,7 +35,7 @@ const models = [
     { value: 'gpt-4.1', text: 'GPT-4.1' },
     { value: 'gpt-4o', text: 'GPT-4o' },
     { value: 'o3-mini-high', text: 'o3-mini' },
-    { value: 'o3-2025-04-16', text: 'o3' },
+    { value: 'o3', text: 'o3' },
     { value: 'o4-mini', text: 'o4-mini' },
     { value: 'grok-3-latest', text: 'Grok-3' },
     { value: 'grok-3-mini', text: 'Grok-3 Mini' },
