@@ -1,435 +1,325 @@
 // ===== FILE: js/components/settingsModal.js =====
+/*
+ * One-stop, self-contained Settings modal component.
+ *  • Keeps localStorage persistence.
+ *  • Removes legacy *_old inputs, duplicate listeners, dead code.
+ *  • All DOM look-ups are deferred until DOMContentLoaded.
+ *  • Safer rendering (no innerHTML with user input).
+ */
+
 import * as state from '../state.js';
-import { showNotification } from './notification.js';
-import { updateInputUIForModel } from './chatInput.js';
-import { updateHeaderModelSelect } from './header.js';
-import { signOut } from '../authService.js';
-import { showAuthModal } from './authModal.js';
+import { showNotification }          from './notification.js';
+import { updateInputUIForModel }     from './chatInput.js';
+import { updateHeaderModelSelect }   from './header.js';
+import { signOut, onAuthStateChange }from '../authService.js';
+import { showAuthModal }             from './authModal.js';
 
-// --- DOM Elements ---
-const settingsModalElement = document.getElementById('settingsModal');
-// General Settings Elements
-const apiKeyInput = document.getElementById('apiKey');
-const modelSelect = document.getElementById('modelSelect'); // Default model select
-const ttsInstructionsInput = document.getElementById('ttsInstructionsInput'); // Select the textarea
-const ttsVoiceSelect = document.getElementById('ttsVoiceSelect');
-// General Settings Elements
-const geminiApiKeyInput = document.getElementById('geminiApiKey');
-const xaiApiKeyInput = document.getElementById('xaiApiKey');
-const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-// Modal Control Elements
-const closeModalBtn = document.getElementById('closeModalBtn');
-// Buttons that trigger opening the modal
-const settingsBtnSidebar = document.getElementById('settingsBtn');
-const modelBtnToolbar = document.getElementById('modelButton');
-// <<< NEW: Header settings button selector >>>
-const headerSettingsBtn = document.getElementById('headerSettingsBtn'); // Add this if not already present elsewhere
+/* ---------- Helpers ---------------------------------------------------- */
 
-// Settings Modal Component
+const KEY_PATTERNS = {
+  openai : /^sk-[A-Za-z0-9]{32,100}$/,
+  gemini : /^[A-Za-z0-9-_]{39}$/,
+  xai    : /^[A-Za-z0-9-_]{64}$/
+};
+
+function isValidKey(value = '', provider) {
+  if (!value) return true;                         // empty = optional
+  return KEY_PATTERNS[provider]?.test(value) ?? true;
+}
+
+/* ---------- SettingsModal class ---------------------------------------- */
+
 class SettingsModal {
-    constructor() {
-        // Initialize DOM elements
-        this.modal = document.getElementById('settingsModal');
-        this.tabs = document.querySelectorAll('.settings-tab');
-        this.tabContents = document.querySelectorAll('.settings-tab-content');
-        this.apiKeyInputs = document.querySelectorAll('.api-key-input');
-        this.modelSelect = document.getElementById('modelSelect');
-        this.ttsInstructionsInput = document.getElementById('ttsInstructionsInput'); // Corrected ID based on top-level selection
-        this.saveButton = document.getElementById('saveSettingsBtn'); // Use the correct ID
-        this.closeButton = document.getElementById('closeModalBtn'); // Use the correct ID
+  constructor() {
+    /* DOM nodes – filled in `this.cacheDom()` */
+    this.modal                 = null;
+    this.tabs                  = null;
+    this.tabContents           = null;
+    this.apiKeyInputs          = null;
+    this.apiKeyToggles         = null;
+    this.apiKeyIndicators      = null;
 
-        // Bind methods to maintain 'this' context
-        this.handleTabClick = this.handleTabClick.bind(this);
-        this.handleApiKeyToggle = this.handleApiKeyToggle.bind(this);
-        this.handleSave = this.handleSave.bind(this);
-        this.handleClose = this.handleClose.bind(this);
-        this.handleModalClick = this.handleModalClick.bind(this);
+    this.apiKeyOpenAIInput     = null;
+    this.geminiApiKeyInput     = null;
+    this.xaiApiKeyInput        = null;
 
-        this.initializeEventListeners();
-        this.initializeApiKeyValidation();
-    }
+    this.modelSelect           = null;
+    this.ttsInstructionsInput  = null;
+    this.ttsVoiceSelect        = null;
 
-    initializeEventListeners() {
-        // Tab switching
-        this.tabs.forEach(tab => {
-            tab.addEventListener('click', this.handleTabClick);
-        });
+    this.saveBtn               = null;
+    this.closeBtn              = null;
 
-        // API key show/hide toggles
-        document.querySelectorAll('.api-key-toggle').forEach(toggle => {
-            toggle.addEventListener('click', this.handleApiKeyToggle);
-        });
+    /* public */
+    this.open   = this.open  .bind(this);
+    this.close  = this.close .bind(this);
 
-        // Save settings
-        this.saveButton.addEventListener('click', this.handleSave);
+    /* private binds */
+    this.#handleTabClick       = this.#handleTabClick.bind(this);
+    this.#handleOverlayClick   = this.#handleOverlayClick.bind(this);
+    this.#handleToggleClick    = this.#handleToggleClick.bind(this);
+    this.#handleSaveClick      = this.#handleSaveClick.bind(this);
+  }
 
-        // Close modal
-        this.closeButton.addEventListener('click', this.handleClose);
+  /* -------------------------------------------------------------------- */
+  /*  Initialisation                                                      */
+  /* -------------------------------------------------------------------- */
+  init() {
+    this.cacheDom();
+    this.attachEvents();
+    this.populateUserInfo();             // initial render
+    return this;                         // fluent
+  }
 
-        // Close on overlay click
-        this.modal.addEventListener('click', this.handleModalClick);
-    }
+  /* querySelector look-ups (run *after* DOM is ready) */
+  cacheDom() {
+    this.modal                = document.getElementById('settingsModal');
 
-    handleTabClick(event) {
-        const tab = event.target.closest('.settings-tab');
-        if (!tab) return;
-        const tabId = tab.dataset.tab;
-        this.switchTab(tabId);
-    }
+    this.tabs                 = [...this.modal.querySelectorAll('.settings-tab')];
+    this.tabContents          = [...this.modal.querySelectorAll('.settings-tab-content')];
 
-    handleApiKeyToggle(event) {
-        const container = event.target.closest('.api-key-input-container');
-        const input = container.querySelector('.api-key-input');
-        const icon = event.target.querySelector('i');
-        
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.textContent = 'visibility_off';
-        } else {
-            input.type = 'password';
-            icon.textContent = 'visibility';
-        }
-    }
+    this.apiKeyInputs         = [...this.modal.querySelectorAll('.api-key-input')];
+    this.apiKeyToggles        = [...this.modal.querySelectorAll('.api-key-toggle')];
 
-    handleModalClick(event) {
-        if (event.target === this.modal) {
-            this.close();
-        }
-    }
+    /* individual fields */
+    this.apiKeyOpenAIInput    = this.modal.querySelector('#apiKey');
+    this.geminiApiKeyInput    = this.modal.querySelector('#geminiApiKey');
+    this.xaiApiKeyInput       = this.modal.querySelector('#xaiApiKey');
 
-    initializeApiKeyValidation() {
-        this.apiKeyInputs.forEach(input => {
-            input.addEventListener('input', () => this.validateApiKey(input));
-            input.addEventListener('blur', () => this.validateApiKey(input));
-        });
-    }
+    this.modelSelect          = this.modal.querySelector('#modelSelect');
+    this.ttsInstructionsInput = this.modal.querySelector('#ttsInstructionsInput');
+    this.ttsVoiceSelect       = this.modal.querySelector('#ttsVoiceSelect');
 
-    switchTab(tabId) {
-        if (!tabId) return;
-        
-        this.tabs.forEach(tab => {
-            if (tab.dataset.tab === tabId) {
-                tab.classList.add('active');
-            } else {
-                tab.classList.remove('active');
-            }
-        });
+    this.saveBtn              = this.modal.querySelector('#saveSettingsBtn');
+    this.closeBtn             = this.modal.querySelector('#closeModalBtn');
+  }
 
-        this.tabContents.forEach(content => {
-            if (content.id === tabId) {
-                content.style.display = 'block';
-            } else {
-                content.style.display = 'none';
-            }
-        });
-    }
+  attachEvents() {
+    /* tab nav */
+    this.tabs.forEach(tab => tab.addEventListener('click', this.#handleTabClick));
 
-    validateApiKey(input) {
-        const container = input.closest('.api-key-input-container');
-        const indicator = container.querySelector('.api-key-validation-indicator');
-        if (!indicator) return;
-        
-        // Basic validation - check if the key matches expected format
-        const isValid = this.isValidApiKey(input.value, input.dataset.provider);
-        
-        indicator.classList.toggle('valid', isValid);
-        indicator.classList.toggle('error', !isValid && input.value.length > 0);
-        input.classList.toggle('error', !isValid && input.value.length > 0);
+    /* key show / hide */
+    this.apiKeyToggles.forEach(t => t.addEventListener('click', this.#handleToggleClick));
 
-        // Add checkmark or x icon
-        indicator.innerHTML = isValid && input.value.length > 0 ? '✓' : input.value.length > 0 ? '✕' : '';
-    }
+    /* live validation */
+    this.apiKeyInputs.forEach(input => {
+      input.addEventListener('input',  () => this.#validate(input));
+      input.addEventListener('blur',   () => this.#validate(input));
+    });
 
-    isValidApiKey(key, provider) {
-        if (!key) return true; // Empty key is considered valid (optional)
-        
-        const patterns = {
-            'openai': /^sk-[A-Za-z0-9]{48}$/,
-            'gemini': /^[A-Za-z0-9-_]{39}$/,
-            'xai': /^[A-Za-z0-9-_]{64}$/
-        };
+    /* save / close / overlay */
+    this.saveBtn .addEventListener('click', this.#handleSaveClick);
+    this.closeBtn.addEventListener('click', this.close);
+    this.modal   .addEventListener('click', this.#handleOverlayClick);
 
-        return patterns[provider]?.test(key) ?? true;
-    }
+    /* auth state changes update account area */
+    onAuthStateChange(() => {
+      if (this.modal.classList.contains('visible')) this.populateUserInfo();
+    });
+  }
 
-    async handleSave() {
-        // Safely retrieve all DOM elements
-        const apiKeyInput = document.getElementById('apiKey');
-        const geminiApiKeyInput = document.getElementById('geminiApiKey');
-        const xaiApiKeyInput = document.getElementById('xaiApiKey');
-    
-        // Fallbacks and guards
-        if (!apiKeyInput || !geminiApiKeyInput || !xaiApiKeyInput || !this.modelSelect || !this.ttsInstructionsInput) {
-            showNotification("Some settings fields are missing in the DOM.", "error");
-            console.error("Missing DOM elements:", {
-                apiKeyInput,
-                geminiApiKeyInput,
-                xaiApiKeyInput,
-                modelSelect: this.modelSelect,
-                ttsInstructionsInput: this.ttsInstructionsInput
-            });
-            return;
-        }
-    
-        const settings = {
-            apiKey: apiKeyInput.value.trim(),
-            geminiApiKey: geminiApiKeyInput.value.trim(),
-            xaiApiKey: xaiApiKeyInput.value.trim(),
-            defaultModel: this.modelSelect.value,
-            ttsInstructions: this.ttsInstructionsInput.value.trim()
-        };
-    
-        try {
-            // Save settings to localStorage
-            for (const [key, value] of Object.entries(settings)) {
-                localStorage.setItem(key, value);
-            }
-    
-            // Update UI
-            updateInputUIForModel(settings.defaultModel);
-            updateHeaderModelSelect(settings.defaultModel);
-    
-            showNotification('Settings saved successfully', 'success');
-    
-            // Optionally save to Supabase
-            // await saveSettingsToSupabase(settings);
-    
-            // Close modal after short delay
-            setTimeout(() => this.close(), 1500);
-        } catch (error) {
-            showNotification(error.message, 'error');
-            console.error('Error saving settings:', error);
-        }
-    }
+  /* -------------------------------------------------------------------- */
+  /*  Modal open / close                                                  */
+  /* -------------------------------------------------------------------- */
+  open() {
+    this.#fillForm(state.loadSettings());
+    this.#switchTab('api-keys');
+    this.modal.classList.add('visible');
+    this.apiKeyInputs.forEach(this.#validate.bind(this)); // initial validation
+  }
 
+  close() {
+    this.modal.classList.remove('visible');
+  }
 
-    open() {
-        // Load current settings
-        const currentSettings = state.loadSettings();
-        
-        // Use the correct input IDs as present in the HTML
-        const apiKeyInput = document.getElementById('apiKey_old');
-        const geminiApiKeyInput = document.getElementById('geminiApiKey_old');
-        const xaiApiKeyInput = document.getElementById('xaiApiKey_old');
+  /* -------------------------------------------------------------------- */
+  /*  Internal helpers                                                    */
+  /* -------------------------------------------------------------------- */
+  #switchTab(id) {
+    this.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === id));
+    this.tabContents.forEach(c => c.style.display = c.id === id ? 'block' : 'none');
+  }
 
-        if (apiKeyInput) apiKeyInput.value = currentSettings.apiKey || '';
-        if (geminiApiKeyInput) geminiApiKeyInput.value = currentSettings.geminiApiKey || '';
-        if (xaiApiKeyInput) xaiApiKeyInput.value = currentSettings.xaiApiKey || '';
-        this.modelSelect.value = currentSettings.defaultModel || 'gpt-4o';
-        this.ttsInstructionsInput.value = currentSettings.ttsInstructions || '';
+  #validate(input) {
+    const provider   = input.dataset.provider;
+    const container  = input.closest('.api-key-input-container');
+    const indicator  = container.querySelector('.api-key-validation-indicator');
 
-        // Show first tab by default
-        this.switchTab('api-keys');
-        
-        // Show modal
-        this.modal.style.display = 'flex';
-        
-        // Validate API keys
-        this.apiKeyInputs.forEach(input => this.validateApiKey(input));
-    }
+    const ok = isValidKey(input.value, provider);
 
-    close() {
-        this.modal.style.display = 'none';
-    }
+    indicator.textContent = input.value ? (ok ? '✓' : '✕') : '';
+    indicator.classList.toggle('valid',  ok && input.value);
+    indicator.classList.toggle('error', !ok && input.value);
+    input     .classList.toggle('error', !ok && input.value);
+  }
 
-    handleClose() {
-        this.close();
-    }
-}
+  #saveToLocalStorage(settingsObj) {
+    localStorage.setItem('settings', JSON.stringify(settingsObj));
+  }
 
-// Create and export singleton instance
-const settingsModal = new SettingsModal();
-export { settingsModal };
+  #fillForm({ apiKey = '', geminiApiKey = '', xaiApiKey = '', model = 'gpt-4o',
+              ttsInstructions = '', ttsVoice = 'alloy' }) {
+    this.apiKeyOpenAIInput.value = apiKey;
+    this.geminiApiKeyInput.value = geminiApiKey;
+    this.xaiApiKeyInput.value    = xaiApiKey;
 
-/**
- * Toggles the visibility of the settings modal.
- * @param {boolean} visible - Whether the modal should be visible.
- */
-function toggleSettingsModal(visible) {
-    settingsModalElement?.classList.toggle('visible', visible);
-}
+    this.modelSelect.value          = model;
+    this.ttsVoiceSelect.value       = ttsVoice;
+    this.ttsInstructionsInput.value = ttsInstructions;
+  }
 
-/**
- * Updates the user info section in the settings modal
- */
-function updateUserInfoInSettings() {
+  /* -------------------------------------------------------------------- */
+  /*  User info / Auth section                                            */
+  /* -------------------------------------------------------------------- */
+  populateUserInfo() {
+    const container = this.modal.querySelector('#userInfoSection');
+    if (!container) return;
+
     const user = state.getCurrentUserState();
-    const userInfoSection = document.getElementById('userInfoSection');
-    
-    if (!userInfoSection) return;
-    
+    container.replaceChildren(); // clear
+
+    const h3 = document.createElement('h3');
+    h3.textContent = 'Account';
+    container.appendChild(h3);
+
     if (user) {
-        userInfoSection.innerHTML = `
-            <h3>Account</h3>
-            <div class="user-info" style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                <div class="user-email">Signed in as: <strong>${user.email}</strong></div>
-                <button id="logoutFromSettings" class="secondary-button">Sign Out</button>
-            </div>
-        `;
-        
-        // Add logout handler
-        document.getElementById('logoutFromSettings')?.addEventListener('click', async () => {
-            try {
-                await signOut();
-                showNotification('Signed out successfully', 'success');
-                updateUserInfoInSettings();
-                closeSettings();
-            } catch (error) {
-                showNotification('Error signing out: ' + error.message, 'error');
-            }
-        });
-    } else {
-        userInfoSection.innerHTML = `
-            <h3>Account</h3>
-            <div class="user-info" style="margin-top: 8px;">
-                <div class="not-signed-in">Not signed in</div>
-                <p style="margin-top: 4px; margin-bottom: 12px;">Sign in to sync your settings, chats, and custom GPTs across devices.</p>
-                <button id="loginFromSettings" class="primary-button">Sign In</button>
-            </div>
-        `;
-        
-        // Add login handler
-        document.getElementById('loginFromSettings')?.addEventListener('click', () => {
-            closeSettings();
-            showAuthModal();
-        });
-    }
-}
+      /* signed-in markup */
+      const wrapper  = document.createElement('div');
+      wrapper.className = 'user-info';
+      wrapper.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:8px';
 
-/**
- * Loads the current GENERAL settings from state into the modal form fields.
- */
-function loadGeneralSettingsIntoForm() {
-    const currentSettings = state.loadSettings(); // Returns { apiKey, model, ttsInstructions, geminiApiKey, xaiApiKey }
-    
-    // Handle both old and new input fields
-    const apiKeyOld = document.getElementById('apiKey_old');
-    const geminiApiKeyOld = document.getElementById('geminiApiKey_old');
-    const xaiApiKeyOld = document.getElementById('xaiApiKey_old');
-    
-    // Set values for new inputs
-    if (apiKeyInput) apiKeyInput.value = currentSettings.apiKey || '';
-    if (modelSelect) modelSelect.value = currentSettings.model || 'gpt-4o';
-    if (ttsInstructionsInput) ttsInstructionsInput.value = currentSettings.ttsInstructions || '';
-    if (ttsVoiceSelect) ttsVoiceSelect.value = currentSettings.ttsVoice || 'alloy';
-    if (geminiApiKeyInput) geminiApiKeyInput.value = currentSettings.geminiApiKey || '';
-    if (xaiApiKeyInput) xaiApiKeyInput.value = currentSettings.xaiApiKey || '';
-    
-    // Set values for old inputs
-    if (apiKeyOld) apiKeyOld.value = currentSettings.apiKey || '';
-    if (geminiApiKeyOld) geminiApiKeyOld.value = currentSettings.geminiApiKey || '';
-    if (xaiApiKeyOld) xaiApiKeyOld.value = currentSettings.xaiApiKey || '';
-    
-    console.log("General settings loaded into form.");
-}
+      const emailDiv = document.createElement('div');
+      emailDiv.className   = 'user-email';
+      emailDiv.textContent = `Signed in as: ${user.email}`;
 
-/**
- * Handles opening the settings modal.
- * <<< This is the correct, exported version >>>
- */
-export function openSettings() {
-    // Use the class instance method to open the modal
-    settingsModal.open();
-    // Update user info after opening, as open() loads settings
-    updateUserInfoInSettings();
-    console.log("Settings modal opened via class method.");
-}
+      const logoutBtn = document.createElement('button');
+      logoutBtn.id = 'logoutFromSettings';
+      logoutBtn.className = 'secondary-button';
+      logoutBtn.textContent = 'Sign Out';
 
-/**
- * Handles closing the settings modal.
- */
-function closeSettings() {
-    // Use the class instance method to close the modal
-    settingsModal.close();
-    console.log("Settings modal closed via class method.");
-}
-
-/**
- * Handles saving only the GENERAL settings (API Keys, Default Model, TTS Instructions).
- */
-function handleGeneralSettingsSave() {
-    // Get values from new inputs first, fall back to old inputs if needed
-    const apiKeyOld = document.getElementById('apiKey_old');
-    const geminiApiKeyOld = document.getElementById('geminiApiKey_old');
-    const xaiApiKeyOld = document.getElementById('xaiApiKey_old');
-    
-    // Prefer new inputs, fall back to old inputs
-    const newApiKey = (apiKeyInput?.value.trim() || apiKeyOld?.value.trim() || '');
-    const newModel = modelSelect?.value ?? 'gpt-4o';
-    const newTtsInstructions = ttsInstructionsInput?.value.trim() ?? '';
-    const newTtsVoice = ttsVoiceSelect?.value ?? 'alloy';
-    const newGeminiApiKey = (geminiApiKeyInput?.value.trim() || geminiApiKeyOld?.value.trim() || '');
-    const newXaiApiKey = (xaiApiKeyInput?.value.trim() || xaiApiKeyOld?.value.trim() || '');
-
-    state.saveSettings(newApiKey, newModel, newTtsInstructions, newGeminiApiKey, newXaiApiKey, newTtsVoice);
-
-    showNotification('General settings saved!', 'success');
-
-    // Determine the effective model (might be overridden by active custom GPT)
-    const activeGpt = state.getActiveCustomGptConfig();
-    const effectiveModelForUI = activeGpt ? 'gpt-4o' : newModel;
-
-    updateInputUIForModel(effectiveModelForUI);
-    updateHeaderModelSelect(newModel);
-
-    console.log("General settings saved.");
-}
-
-/**
- * Updates the settings form with current values from state.
- */
-function updateSettingsForm() {
-    const settings = state.loadSettings();
-    
-    if (apiKeyInput) apiKeyInput.value = settings.apiKey;
-    if (modelSelect) modelSelect.value = settings.model;
-    if (ttsInstructionsInput) ttsInstructionsInput.value = settings.ttsInstructions;
-    if (ttsVoiceSelect) ttsVoiceSelect.value = settings.ttsVoice;
-    if (geminiApiKeyInput) geminiApiKeyInput.value = settings.geminiApiKey;
-    if (xaiApiKeyInput) xaiApiKeyInput.value = settings.xaiApiKey; // NEW: Set X.AI API key value
-
-    console.log("Settings form updated.");
-}
-
-/**
- * Updates the settings modal's DEFAULT model dropdown value.
- * @param {string} newModelValue - The new default model value (e.g., 'gpt-4o').
- */
-export function updateSettingsModalSelect(newModelValue) {
-    if (modelSelect) {
-        modelSelect.value = newModelValue;
-        console.log(`Settings modal default model dropdown synchronized to: ${newModelValue}`);
-    }
-}
-
-// --- Initialization ---
-export function initializeSettingsModal() {
-    console.log("Initializing Settings Modal (Shell & General)...");
-    // Attach listeners to all buttons that should open the settings
-    settingsBtnSidebar?.addEventListener('click', openSettings);
-    modelBtnToolbar?.addEventListener('click', openSettings);
-    // <<< Ensure the header settings button listener is added (can be here or in header.js) >>>
-    // If header.js already adds it, you don't need it here. If not, add it:
-    headerSettingsBtn?.addEventListener('click', openSettings);
-    
-    // Listen for auth state changes to update user info
-    import('../authService.js').then(({ onAuthStateChange }) => {
-        onAuthStateChange(() => {
-            if (settingsModalElement?.classList.contains('visible')) {
-                updateUserInfoInSettings();
-            }
-        });
-    });
-
-    // Close and Save buttons are handled by the SettingsModal class instance
-    // closeModalBtn?.addEventListener('click', closeSettings); // REMOVED - Handled by class
-    // saveSettingsBtn?.addEventListener('click', handleGeneralSettingsSave); // REMOVED - Handled by class
-
-    // Close modal on overlay click (Keep this one as it targets the overlay specifically)
-    settingsModalElement?.addEventListener('click', (event) => {
-        if (event.target === settingsModalElement) {
-            closeSettings();
+      logoutBtn.addEventListener('click', async () => {
+        try {
+          await signOut();
+          showNotification('Signed out successfully', 'success');
+          this.populateUserInfo();
+          this.close();
+        } catch (err) {
+          showNotification('Error signing out: ' + err.message, 'error');
         }
-    });
-    console.log("Settings Modal (Shell & General) Initialized.");
+      });
+
+      wrapper.append(emailDiv, logoutBtn);
+      container.appendChild(wrapper);
+    } else {
+      /* not signed-in markup */
+      const wrapper  = document.createElement('div');
+      wrapper.style.marginTop = '8px';
+
+      const statusP = document.createElement('p');
+      statusP.textContent = 'Not signed in';
+      statusP.style.margin = '0 0 12px 0';
+
+      const loginBtn = document.createElement('button');
+      loginBtn.id = 'loginFromSettings';
+      loginBtn.className = 'primary-button';
+      loginBtn.textContent = 'Sign In';
+
+      loginBtn.addEventListener('click', () => {
+        this.close();
+        showAuthModal();
+      });
+
+      wrapper.append(statusP, loginBtn);
+      container.appendChild(wrapper);
+    }
+  }
+
+  /* -------------------------------------------------------------------- */
+  /*  Event handlers                                                      */
+  /* -------------------------------------------------------------------- */
+  #handleTabClick(e) {
+    const tab = e.target.closest('.settings-tab');
+    if (tab) this.#switchTab(tab.dataset.tab);
+  }
+
+  #handleOverlayClick(e) {
+    if (e.target === this.modal) this.close();
+  }
+
+  #handleToggleClick(e) {
+    const container = e.currentTarget.closest('.api-key-input-container');
+    const input     = container.querySelector('.api-key-input');
+    const icon      = e.currentTarget.querySelector('i');
+
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    icon.textContent = show ? 'visibility_off' : 'visibility';
+  }
+
+  #handleSaveClick() {
+    /* gather data */
+    const settings = {
+      apiKey         : this.apiKeyOpenAIInput.value.trim(),
+      geminiApiKey   : this.geminiApiKeyInput.value.trim(),
+      xaiApiKey      : this.xaiApiKeyInput.value.trim(),
+      model          : this.modelSelect.value,
+      ttsInstructions: this.ttsInstructionsInput.value.trim(),
+      ttsVoice       : this.ttsVoiceSelect.value
+    };
+
+    /* quick validation gate */
+    if (!isValidKey(settings.apiKey, 'openai') ||
+        !isValidKey(settings.geminiApiKey, 'gemini') ||
+        !isValidKey(settings.xaiApiKey, 'xai')) {
+      showNotification('Please correct invalid API keys.', 'error');
+      return;
+    }
+
+    try {
+      /* 1) cache for this session */
+      state.saveSettings(settings);
+
+      /* 2) persist to localStorage */
+      this.#saveToLocalStorage(settings);
+
+      /* 3) UI side-effects */
+      updateInputUIForModel(settings.model);
+      updateHeaderModelSelect(settings.model);
+
+      showNotification('Settings saved successfully', 'success');
+      setTimeout(this.close, 1000);
+    } catch (err) {
+      console.error(err);
+      showNotification('Error saving settings: ' + err.message, 'error');
+    }
+  }
 }
+
+/* ---------- Singleton instance ---------------------------------------- */
+
+const settingsModal = new SettingsModal();
+
+/* ---------- Public API ------------------------------------------------ */
+
+export function openSettings()  { settingsModal.open(); }
+export function closeSettings() { settingsModal.close(); }
+
+/* Update the model dropdown after an external change */
+export function updateSettingsModalSelect(model) {
+  if (settingsModal.modelSelect) settingsModal.modelSelect.value = model;
+}
+
+/* Initialize after DOM is ready */
+export function initializeSettingsModal() {
+  document.addEventListener('DOMContentLoaded', () => {
+    settingsModal.init();
+
+    /* buttons that launch the modal */
+    document.getElementById('settingsBtn' )?.addEventListener('click', openSettings); // sidebar
+    document.getElementById('modelButton')?.addEventListener('click', openSettings); // toolbar
+    document.getElementById('headerSettingsBtn')?.addEventListener('click', openSettings); // header
+  });
+}
+
+/* Re-export for other modules that imported the old name */
+export { settingsModal };
