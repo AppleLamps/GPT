@@ -2,6 +2,7 @@
 import { escapeHTML } from './utils.js';
 import * as events from './events.js';
 import { showNotification } from './components/notification.js';
+import * as state from './state.js';
 
 // --- DOM Element Selectors ---
 export const sidebar = document.getElementById('sidebar');
@@ -426,11 +427,17 @@ function initializeCustomModelDropdown() {
         // Add click listener
         listItem.addEventListener('click', () => {
             selectedModelText.textContent = model.text;
-            // Here you would typically update the application state with the selected model value
-            console.log("Model selected:", model.value);
-            // You might dispatch a custom event or call a function in main.js
-            // events.dispatchEvent('modelSelected', { model: model.value });
-
+            // Update application state with the selected model value
+            // Get current settings
+            const apiKey = state.getApiKey();
+            const ttsInstructions = state.getTtsInstructions();
+            const geminiApiKey = state.getGeminiApiKey();
+            const xaiApiKey = state.getXaiApiKey();
+            const ttsVoice = state.getTtsVoice();
+            const enableHtmlSandbox = state.getIsHtmlSandboxEnabled();
+            // Save new model selection to state
+            state.saveSettings(apiKey, model.value, ttsInstructions, geminiApiKey, xaiApiKey, ttsVoice, enableHtmlSandbox);
+            console.log("Model selected and saved to state:", model.value);
             // Hide the dropdown
             customModelDropdownList.classList.remove('visible');
             customModelDropdownButton.setAttribute('aria-expanded', 'false');
