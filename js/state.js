@@ -318,9 +318,9 @@ export async function saveSettings(newApiKey, newModel, newTtsInstructions, newG
         console.log("User logged in. Saving settings to Supabase...");
         try {
             // dataService functions handle upserting
-            await dataService.saveApiKey('openai', settings.apiKey);
-            await dataService.saveApiKey('gemini', settings.geminiApiKey);
-            await dataService.saveApiKey('xai', settings.xaiApiKey);
+            await dataService.saveApiKey('openai', settings.apiKey, currentUser.id);
+            await dataService.saveApiKey('gemini', settings.geminiApiKey, currentUser.id);
+            await dataService.saveApiKey('xai', settings.xaiApiKey, currentUser.id);
 
             await dataService.saveSettings({
                 model: settings.model,
