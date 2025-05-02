@@ -53,12 +53,7 @@ class SettingsModal {
     /* public */
     this.open   = this.open  .bind(this);
     this.close  = this.close .bind(this);
-
-    /* private binds */
-    this.#handleTabClick       = this.#handleTabClick.bind(this);
-    this.#handleOverlayClick   = this.#handleOverlayClick.bind(this);
-    this.#handleToggleClick    = this.#handleToggleClick.bind(this);
-    this.#handleSaveClick      = this.#handleSaveClick.bind(this);
+    
   }
 
   /* -------------------------------------------------------------------- */
