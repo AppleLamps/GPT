@@ -243,39 +243,42 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
 
     // Perform web search first if requested (works with any model)
     if (capabilities.webSearch) {
-        console.log("Web search requested - Starting web search");
-        
+        console.log("Web search requested – initiating...");
+    
         if (!apiKey) {
             showNotification("Error: API key is required for web search.", 'error');
             return;
         }
-
+    
         const webSearchRequestBody = {
-            model: finalModel,
+            model: finalModel, // <- use the actual selected model without fallback
             input: buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt),
             stream: true,
             tools: [{ type: "web_search_preview" }]
         };
-
-        let webSearchResults = null;
+    
         try {
             const searchResponse = await fetchResponsesApi(apiKey, webSearchRequestBody, true);
-            webSearchResults = searchResponse?.webSearchResults;
-            if (webSearchResults) {
-                console.log("Web search completed successfully");
-                // Add search results to knowledge content for the main model
+            const webSearchResults = searchResponse?.webSearchResults;
+    
+            if (webSearchResults?.results?.length) {
+                console.log("Web search completed successfully with results");
+    
+                const formattedResults = webSearchResults.results.map(r =>
+                    `[${r.title}]\n${r.url}\n${r.content}`
+                ).join("\n\n");
+    
                 knowledgeContent = (knowledgeContent ? knowledgeContent + "\n\n" : "") +
-                    "--- Web Search Results ---\n" +
-                    webSearchResults.results.map(r => 
-                        `[${r.title}]\n${r.url}\n${r.content}`
-                    ).join("\n\n") +
-                    "\n--- End Web Search Results ---";
+                    "--- Web Search Results ---\n" + formattedResults + "\n--- End Web Search Results ---";
+            } else {
+                console.warn("Web search completed, but no results returned.");
             }
         } catch (error) {
             console.error("Web search failed:", error);
             showNotification("Web search failed, continuing with base model response", 'warning');
         }
     }
+
 
     // Now proceed with the main model call (existing code for different model types)
     if (finalModel.startsWith('gemini-')) {
