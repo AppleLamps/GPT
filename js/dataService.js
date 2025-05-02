@@ -9,17 +9,14 @@ import { showNotification } from './notificationHelper.js';
  * @param {string} apiKey - The API key
  * @returns {Promise<object>} - The saved API key data
  */
-export async function saveApiKey(provider, apiKey) {
+export async function saveApiKey(provider, apiKey, userId) {
     try {
-        const user = getCurrentUserState();
-        if (!user) throw new Error('User not authenticated');
+        if (!userId) throw new Error('User ID is required to save API key');
 
-        // In a production app, you'd encrypt this before sending to Supabase
-        // For now, we'll just store it (not recommended for production)
         const { data, error } = await supabase
             .from('api_keys')
             .upsert({
-                user_id: user.id,
+                user_id: userId,
                 provider,
                 encrypted_key: apiKey
             }, {
@@ -33,6 +30,7 @@ export async function saveApiKey(provider, apiKey) {
         throw error;
     }
 }
+
 
 /**
  * Get all API keys for the current user
