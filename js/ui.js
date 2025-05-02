@@ -1,8 +1,7 @@
+// MODIFIED: Removed formatContent import if it was here
 import { escapeHTML } from './utils.js';
 import * as events from './events.js';
-import { showNotification } from './notificationHelper.js';
-// <<< ADDED: Import state functions >>>
-import * as state from './state.js';
+import { showNotification } from './components/notification.js';
 
 // --- DOM Element Selectors ---
 export const sidebar = document.getElementById('sidebar');
@@ -35,6 +34,7 @@ const models = [
     { value: 'gpt-4.1', text: 'GPT-4.1' },
     { value: 'gpt-4o', text: 'GPT-4o' },
     { value: 'o3-mini-high', text: 'o3-mini' },
+    { value: 'o3-2025-04-16', text: 'o3' },
     { value: 'o4-mini', text: 'o4-mini' },
     { value: 'grok-3-latest', text: 'Grok-3' },
     { value: 'grok-3-mini', text: 'Grok-3 Mini' },
@@ -421,46 +421,15 @@ function initializeCustomModelDropdown() {
         listItem.textContent = model.text;
         listItem.dataset.value = model.value;
         listItem.setAttribute('role', 'option');
-        // Set initial selected state based on loaded settings
-        listItem.setAttribute('aria-selected', model.value === state.getSelectedModelSetting() ? 'true' : 'false');
+        listItem.setAttribute('aria-selected', 'false');
 
         // Add click listener
-        listItem.addEventListener('click', async () => { // <<< Make async for saveSettings >>>
-            // Update button text
+        listItem.addEventListener('click', () => {
             selectedModelText.textContent = model.text;
-
-            // Update aria-selected state for all items
-            customModelDropdownList.querySelectorAll('li').forEach(li => {
-                li.setAttribute('aria-selected', li === listItem ? 'true' : 'false');
-            });
-
-            // <<< ADDED: Save the selected model to state and storage >>>
-            console.log("Model selected via dropdown:", model.value);
-            try {
-                // Retrieve current settings to pass to saveSettings
-                const currentApiKey = state.getApiKey();
-                const currentTtsInstructions = state.getTtsInstructions();
-                const currentGeminiApiKey = state.getGeminiApiKey();
-                const currentXaiApiKey = state.getXaiApiKey();
-                const currentTtsVoice = state.getTtsVoice();
-                const currentEnableHtmlSandbox = state.getIsHtmlSandboxEnabled();
-
-                await state.saveSettings(
-                    currentApiKey,
-                    model.value, // Use the newly selected model
-                    currentTtsInstructions,
-                    currentGeminiApiKey,
-                    currentXaiApiKey,
-                    currentTtsVoice,
-                    currentEnableHtmlSandbox
-                );
-                showNotification(`Model set to ${model.text}`, 'success', 1500);
-            } catch (error) {
-                console.error("Error saving selected model:", error);
-                showNotification("Error saving model selection.", 'error');
-            }
-            // <<< END ADDED SECTION >>>
-
+            // Here you would typically update the application state with the selected model value
+            console.log("Model selected:", model.value);
+            // You might dispatch a custom event or call a function in main.js
+            // events.dispatchEvent('modelSelected', { model: model.value });
 
             // Hide the dropdown
             customModelDropdownList.classList.remove('visible');
@@ -485,21 +454,18 @@ function initializeCustomModelDropdown() {
         }
     });
 
-    // Set initial selected model text based on loaded settings
-    const initialModelValue = state.getSelectedModelSetting(); // Get from state
-    const initialModel = models.find(model => model.value === initialModelValue);
-    if (initialModel) {
-        selectedModelText.textContent = initialModel.text;
-        // Ensure the correct item is marked as selected initially (already done in loop above)
-    } else {
-        // Fallback if saved model isn't in the list (shouldn't happen ideally)
-        const defaultModel = models.find(model => model.value === 'gpt-4o');
-        selectedModelText.textContent = defaultModel ? defaultModel.text : 'Select Model';
-        if (defaultModel) {
-             const defaultListItem = customModelDropdownList.querySelector(`li[data-value="${defaultModel.value}"]`);
-             if (defaultListItem) {
-                 defaultListItem.setAttribute('aria-selected', 'true');
-             }
+    // Set initial selected model text (if a default is loaded)
+    // This assumes loadSettingsIntoForm is called elsewhere to set the initial model
+    // For now, we can set a default or leave it as "Select Model"
+    // If you have a default model value stored, you would retrieve it here
+    const defaultModelValue = 'gpt-4o'; // Example default
+    const defaultModel = models.find(model => model.value === defaultModelValue);
+    if (defaultModel) {
+        selectedModelText.textContent = defaultModel.text;
+        // Mark the default option as selected in the list (optional, for accessibility)
+        const defaultListItem = customModelDropdownList.querySelector(`li[data-value="${defaultModelValue}"]`);
+        if (defaultListItem) {
+             defaultListItem.setAttribute('aria-selected', 'true');
         }
     }
 }
