@@ -351,11 +351,18 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
             return;
         }
         const previousId = state.getPreviousResponseId();
+        // Only include temperature for models that support it
+        const supportsTemperature = (
+            finalModel === 'gpt-4o' ||
+            finalModel === 'gpt-4.1' ||
+            finalModel === 'gpt-4.5-preview' ||
+            finalModel.startsWith('gpt-4')
+        );
         const requestBody = {
             model: finalModel, // Use the selected/active model directly
             input: buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt),
             stream: true,
-            temperature: 0.8,
+            ...(supportsTemperature ? { temperature: 0.8 } : {}),
             ...(previousId && { previous_response_id: previousId }),
             ...(capabilities.webSearch && { tools: [{ type: "web_search_preview" }] })
         };
