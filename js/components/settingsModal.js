@@ -153,27 +153,47 @@ class SettingsModal {
     }
 
     async handleSave() {
+        // Safely retrieve all DOM elements
+        const apiKeyInput = document.getElementById('apiKey');
+        const geminiApiKeyInput = document.getElementById('geminiApiKey');
+        const xaiApiKeyInput = document.getElementById('xaiApiKey');
+    
+        // Fallbacks and guards
+        if (!apiKeyInput || !geminiApiKeyInput || !xaiApiKeyInput || !this.modelSelect || !this.ttsInstructionsInput) {
+            showNotification("Some settings fields are missing in the DOM.", "error");
+            console.error("Missing DOM elements:", {
+                apiKeyInput,
+                geminiApiKeyInput,
+                xaiApiKeyInput,
+                modelSelect: this.modelSelect,
+                ttsInstructionsInput: this.ttsInstructionsInput
+            });
+            return;
+        }
+    
         const settings = {
-            apiKey: document.getElementById('apiKey').value.trim(),
-            geminiApiKey: document.getElementById('geminiApiKey').value.trim(),
-            xaiApiKey: document.getElementById('xaiApiKey').value.trim(),
+            apiKey: apiKeyInput.value.trim(),
+            geminiApiKey: geminiApiKeyInput.value.trim(),
+            xaiApiKey: xaiApiKeyInput.value.trim(),
             defaultModel: this.modelSelect.value,
             ttsInstructions: this.ttsInstructionsInput.value.trim()
         };
-
+    
         try {
-            // Save settings to local storage without validation
-            // API keys will be validated when actually using the models, not during settings save
-            Object.entries(settings).forEach(([key, value]) => {
+            // Save settings to localStorage
+            for (const [key, value] of Object.entries(settings)) {
                 localStorage.setItem(key, value);
-            });
-
-            // Update UI components
+            }
+    
+            // Update UI
             updateInputUIForModel(settings.defaultModel);
             updateHeaderModelSelect(settings.defaultModel);
-
+    
             showNotification('Settings saved successfully', 'success');
-            
+    
+            // Optionally save to Supabase
+            // await saveSettingsToSupabase(settings);
+    
             // Close modal after short delay
             setTimeout(() => this.close(), 1500);
         } catch (error) {
@@ -181,6 +201,7 @@ class SettingsModal {
             console.error('Error saving settings:', error);
         }
     }
+
 
     open() {
         // Load current settings
