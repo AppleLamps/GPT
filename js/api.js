@@ -215,11 +215,7 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
 
     // Configure based on active Custom GPT
     if (activeConfig) {
-        // <<< ADDED: Log activeConfig and finalModel before potential override >>>
-        console.log(`[api.js] Active config found: ${activeConfig.name}. Initial finalModel: ${finalModel}`);
-        console.log("[api.js] Active config details:", JSON.stringify(activeConfig, null, 2));
         console.log(`Using Custom GPT Config: "${activeConfig.name}"`);
-
         finalSystemPrompt = activeConfig.instructions || null;
         if (activeConfig.knowledgeFiles?.length > 0) {
             knowledgeContent = activeConfig.knowledgeFiles
@@ -230,55 +226,43 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
         if (activeConfig.capabilities?.webSearch !== undefined) {
             capabilities.webSearch = activeConfig.capabilities.webSearch;
         }
-        // <<< ADDED: Explicitly check if activeConfig.model exists and log if overriding >>>
-        if (activeConfig.model && activeConfig.model !== finalModel) {
-            console.warn(`[api.js] Overriding selected model (${finalModel}) with active config model (${activeConfig.model})`);
-            finalModel = activeConfig.model;
-        } else if (activeConfig.model) {
-            console.log(`[api.js] Active config model (${activeConfig.model}) matches selected model.`);
-        } else {
-            console.log(`[api.js] Active config does not specify a model. Using selected model: ${finalModel}`);
-        }
     }
 
     // Perform web search first if requested (works with any model)
     if (capabilities.webSearch) {
-        console.log("Web search requested – initiating...");
-    
+        console.log("Web search requested - Starting web search");
+        
         if (!apiKey) {
             showNotification("Error: API key is required for web search.", 'error');
             return;
         }
-    
+
         const webSearchRequestBody = {
-            model: finalModel, // <- use the actual selected model without fallback
+            model: finalModel,
             input: buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt),
             stream: true,
             tools: [{ type: "web_search_preview" }]
         };
-    
+
+        let webSearchResults = null;
         try {
             const searchResponse = await fetchResponsesApi(apiKey, webSearchRequestBody, true);
-            const webSearchResults = searchResponse?.webSearchResults;
-    
-            if (webSearchResults?.results?.length) {
-                console.log("Web search completed successfully with results");
-    
-                const formattedResults = webSearchResults.results.map(r =>
-                    `[${r.title}]\n${r.url}\n${r.content}`
-                ).join("\n\n");
-    
+            webSearchResults = searchResponse?.webSearchResults;
+            if (webSearchResults) {
+                console.log("Web search completed successfully");
+                // Add search results to knowledge content for the main model
                 knowledgeContent = (knowledgeContent ? knowledgeContent + "\n\n" : "") +
-                    "--- Web Search Results ---\n" + formattedResults + "\n--- End Web Search Results ---";
-            } else {
-                console.warn("Web search completed, but no results returned.");
+                    "--- Web Search Results ---\n" +
+                    webSearchResults.results.map(r => 
+                        `[${r.title}]\n${r.url}\n${r.content}`
+                    ).join("\n\n") +
+                    "\n--- End Web Search Results ---";
             }
         } catch (error) {
             console.error("Web search failed:", error);
             showNotification("Web search failed, continuing with base model response", 'warning');
         }
     }
-
 
     // Now proceed with the main model call (existing code for different model types)
     if (finalModel.startsWith('gemini-')) {
@@ -368,8 +352,7 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
         }
         const previousId = state.getPreviousResponseId();
         const requestBody = {
-            model: finalModel === 'gpt-4.1' ? 'gpt-4.1' :
-                   finalModel === 'gpt-4.5-preview' ? 'gpt-4.5-preview' : 'gpt-4o',
+            model: finalModel, // Use the selected/active model directly
             input: buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt),
             stream: true,
             temperature: 0.8,
@@ -772,8 +755,7 @@ async function fetchResponsesApi(apiKey, requestBody) {
         if (!streamEnded && aiMessageElement) {
             console.warn("Stream ended unexpectedly (Responses API), finalizing with accumulated content.");
             removeTypingIndicator(); // Ensure removal
-            // Render pending web search results if any
-            if (webSearchResults) processWebSearchResults(webSearchResults, aiMessageElement);
+            if (webSearchResults) processWebSearchResults(webSearchResults, aiMessageElement); // Render pending results if any
             const finalRawText = getAccumulatedRawText();
             const finalHtml = parseFinalHtml();
             finalizeAIMessageContent(aiMessageElement, finalHtml || (webSearchResults ? "" : "[Incomplete Response]"), !!webSearchResults);
@@ -1098,15 +1080,14 @@ async function fetchGrokCompletions(apiKey, requestBody) {
                     reasoningSection.innerHTML = escapeHTML(reasoningContent);
                 }
             }
-
-            // Ensure actions are set up even if only reasoning content exists
-            if (!hasContent && reasoningContent && aiMessageElement) {
+             // Ensure actions are set up even if only reasoning content exists
+             if (!hasContent && reasoningContent && aiMessageElement) {
                  const finalRawText = getAccumulatedRawText(); // Will be empty if no main content
                  if (!state.getChatHistory().some(m => m.role === 'assistant' && m.content === finalRawText)) {
                      state.addMessageToHistory({ role: "assistant", content: finalRawText }); // Add empty message if needed
                  }
                  setupMessageActions(aiMessageElement, finalRawText); // Setup actions even for empty main content
-            }
+             }
 
         } else {
              console.log("Grok stream finished without creating a message element (no deltas received).");
