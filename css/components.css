@@ -359,7 +359,6 @@ body.dark-mode .ai-message-content code:not(pre code) { /* Dark mode adjustment 
 }
 
 .send-button:active {
-    transform: scale(0.95);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -408,13 +407,12 @@ body.dark-mode .ai-message-content code:not(pre code) { /* Dark mode adjustment 
         opacity: 0;
     }
     
-    /* Only show text on hover */
+    /* Text remains hidden on hover - prevents button size changes */
     .bottom-toolbar button:hover span,
     .bottom-toolbar .tool-button:hover span {
-        display: inline-block !important;
-        opacity: 1;
-        position: static;
-        margin-left: 6px;
+        display: none !important;
+        opacity: 0;
+        position: absolute;
     }
     
     /* Ensure consistent button sizing */
@@ -432,11 +430,9 @@ body.dark-mode .ai-message-content code:not(pre code) { /* Dark mode adjustment 
         overflow: visible;
     }
     
-    /* Special hover state for buttons with text */
+    /* Hover styling for toolbar buttons - only color changes, no size changes */
     .bottom-toolbar .tool-button:hover {
-        width: auto !important;
-        padding: 6px 12px !important;
-        border-radius: 18px !important;
+        color: var(--accent-color);
     }
     
     /* Force clean SVG alignment */
@@ -459,15 +455,12 @@ body.dark-mode .ai-message-content code:not(pre code) { /* Dark mode adjustment 
     color: var(--text-primary);
     font-size: 14px;
     cursor: pointer;
-    /* Add shadow */
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-    transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, cursor 0.2s ease, width 0.2s ease, box-shadow 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
 }
 
 .tool-button:hover {
     background-color: var(--background-secondary); /* Slightly different hover */
     border-color: var(--border-secondary);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .tool-button svg {
@@ -1312,13 +1305,12 @@ body.dark-mode .settings-select:focus {
         background: none;
         border: none;
         color: var(--text-muted);
-        transition: transform 0.2s ease, color 0.2s ease;
+        transition: color 0.2s ease;
     }
 
     .input-container .bottom-toolbar.mobile-visible .tool-button:hover,
     .input-container .bottom-toolbar.mobile-visible .tool-button:active {
         color: var(--accent-color);
-        transform: scale(1.1);
         background: none;
     }
 
@@ -1460,13 +1452,12 @@ body.dark-mode .settings-select:focus {
         background: none;
         border: none;
         color: var(--text-muted);
-        transition: transform 0.2s ease, color 0.2s ease;
+        transition: color 0.2s ease;
     }
 
     .input-container .bottom-toolbar.mobile-visible .tool-button:hover,
     .input-container .bottom-toolbar.mobile-visible .tool-button:active {
         color: var(--accent-color);
-        transform: scale(1.1);
         background: none;
     }
 
@@ -2337,8 +2328,7 @@ body.dark-mode .file-icon.md {
     padding: 8px;
     border: 1px solid var(--border-primary);
     border-radius: 6px;
-    background-color```css
-    : var(--background-secondary);
+    background-color: var(--background-secondary);
     color: var(--text-primary);
 }
 
@@ -3230,10 +3220,6 @@ body.dark-mode #liveButton.error-state {
 }
 
 /* Live Transcript Display (Basic positioning handled inline in HTML) */
-.live-transcript-container {
-    /* Add padding if needed */
-    /* padding: 0 1rem; */
-}
 
 #liveTranscript {
     /* Styles are mostly inline in index.html for simplicity */
@@ -3460,4 +3446,3 @@ body.dark-mode #liveTranscript {
     overflow-y: auto;
     min-height: 0;
 }
-```

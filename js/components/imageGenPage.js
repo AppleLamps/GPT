@@ -13,9 +13,11 @@ let editingImageDataUrl = null;
 
 // --- Functions ---
 
-import { callImageGenerationFunction } from '../api.js'; // Adjust path
-import { showNotification } from '../notificationHelper.js'; // Adjust path
-import { escapeHTML } from '../utils.js'; // Adjust path
+import { callImageGenerationFunction } from '../api.js';
+import { showNotification } from '../notificationHelper.js';
+import { escapeHTML } from '../utils.js';
+import * as state from '../state.js';
+import { supabase } from '../supabaseClient.js';
 
 // Keep references to DOM elements (imageGenPromptInput, etc.)
 // Assuming these are defined elsewhere or will be defined in initializeImageGenPage
@@ -26,22 +28,32 @@ async function handleGenerateClick() {
         showNotification("Please enter a prompt or upload an image.", "warning");
         return;
     }
-    const modelToUse = "gemini-2.0-flash-exp-image-generation";
-    imageDisplayArea.innerHTML = '<p>Generating with Gemini...</p>';
+
+    // Check if Supabase client is available
+    if (!supabase) {
+        showNotification("Supabase client is not available. Cannot generate photo.", "error");
+        return;
+    }
+
+    imageDisplayArea.innerHTML = '<p>Generating photo...</p>';
     imageGenSendButton.disabled = true;
+
     try {
-        const result = await callImageGenerationFunction(prompt, modelToUse, editingImageDataUrl ? [editingImageDataUrl] : null);
+        console.log("Sending photo generation request with prompt:", prompt);
+        // Note: The new photo-gen endpoint doesn't support image editing
+        const result = await callImageGenerationFunction(prompt);
+
         imageDisplayArea.innerHTML = '';
         const img = document.createElement('img');
         img.src = `data:image/png;base64,${result.b64_json}`;
-        img.alt = "Gemini Generated Image";
+        img.alt = "Generated Image";
         img.style.maxWidth = '100%';
         img.style.height = 'auto';
         imageDisplayArea.appendChild(img);
     } catch (error) {
-        console.error("Gemini image generation failed:", error);
+        console.error("Photo generation failed:", error);
         imageDisplayArea.innerHTML = `<p style="color: red;">Error: ${escapeHTML(error.message)}</p>`;
-        showNotification(`Gemini image generation failed: ${error.message}`, 'error');
+        showNotification(`Photo generation failed: ${error.message}`, 'error');
     } finally {
         imageGenSendButton.disabled = false;
     }
@@ -94,17 +106,14 @@ export function initializeImageGenPage() {
 // --- Helpers ---
 // --- Helpers ---
 function handleImageUpload(event) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
+    // Clear the file input
+    if (imageGenImageInput) imageGenImageInput.value = '';
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        // Store the ENTIRE Data URL string for sending to the backend
-        editingImageDataUrl = e.target.result;
-        // Pass ONLY the base64 part to render the preview, as renderImagePreview adds the prefix back
-        renderImagePreview(editingImageDataUrl.split(',')[1]);
-    };
-    reader.readAsDataURL(file);
+    // Show notification that image editing is not supported
+    showNotification("Image editing is not supported with the current photo generation service.", "warning");
+
+    // Note: If image editing functionality is needed in the future,
+    // this function will need to be re-implemented
 }
 
 function renderImagePreview(base64Image) {

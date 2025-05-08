@@ -50,6 +50,9 @@ class SettingsModal {
     this.saveBtn               = null;
     this.closeBtn              = null;
 
+    /* initialization state */
+    this.isInitialized         = false;
+
     /* public */
     this.open   = this.open  .bind(this);
     this.close  = this.close .bind(this);
@@ -60,15 +63,32 @@ class SettingsModal {
   /*  Initialisation                                                      */
   /* -------------------------------------------------------------------- */
   init() {
-    this.cacheDom();
-    this.attachEvents();
-    this.populateUserInfo();             // initial render
-    return this;                         // fluent
+    try {
+      console.log('Initializing settings modal...');
+      this.cacheDom();
+      console.log('DOM elements cached:', {
+        modal: !!this.modal,
+        apiKeyInputs: !!this.apiKeyInputs,
+        modelSelect: !!this.modelSelect
+      });
+      this.attachEvents();
+      this.populateUserInfo();             // initial render
+      this.isInitialized = true;
+      console.log('Settings modal initialized successfully');
+      return this;                         // fluent
+    } catch (err) {
+      console.error('Failed to initialize settings modal:', err);
+      this.isInitialized = false;
+      return this;
+    }
   }
 
   /* querySelector look-ups (run *after* DOM is ready) */
   cacheDom() {
-    this.modal                = document.getElementById('settingsModal');
+    this.modal = document.getElementById('settingsModal');
+    if (!this.modal) {
+      throw new Error('Settings modal element not found in DOM');
+    }
 
     this.tabs                 = [...this.modal.querySelectorAll('.settings-tab')];
     this.tabContents          = [...this.modal.querySelectorAll('.settings-tab-content')];
@@ -87,6 +107,11 @@ class SettingsModal {
 
     this.saveBtn              = this.modal.querySelector('#saveSettingsBtn');
     this.closeBtn             = this.modal.querySelector('#closeModalBtn');
+
+    // Validate that we found all required elements
+    if (!this.apiKeyOpenAIInput || !this.geminiApiKeyInput || !this.xaiApiKeyInput || !this.modelSelect) {
+      throw new Error('Required modal elements not found in DOM');
+    }
   }
 
   attachEvents() {
@@ -117,10 +142,21 @@ class SettingsModal {
   /*  Modal open / close                                                  */
   /* -------------------------------------------------------------------- */
   open() {
-    this.#fillForm(state.loadSettings());
-    this.#switchTab('api-keys');
-    this.modal.classList.add('visible');
-    this.apiKeyInputs.forEach(this.#validate.bind(this)); // initial validation
+    if (!this.isInitialized || !this.modal) {
+      console.warn('Settings modal not initialized yet. Try again in a moment.');
+      return;
+    }
+
+    try {
+      const settings = state.loadSettings();
+      this.#fillForm(settings);
+      this.#switchTab('api-keys');
+      this.modal.classList.add('visible');
+      this.apiKeyInputs.forEach(this.#validate.bind(this)); // initial validation
+    } catch (err) {
+      console.error('Error opening settings modal:', err);
+      showNotification('Error opening settings. Please try again.', 'error');
+    }
   }
 
   close() {
@@ -136,16 +172,23 @@ class SettingsModal {
   }
 
   #validate(input) {
-    const provider   = input.dataset.provider;
-    const container  = input.closest('.api-key-input-container');
-    const indicator  = container.querySelector('.api-key-validation-indicator');
+    try {
+      const provider   = input.id.replace(/ApiKey$/, '').toLowerCase();
+      const container  = input.closest('.api-key-input-container');
+      if (!container) return;
 
-    const ok = isValidKey(input.value, provider);
+      const indicator  = container.querySelector('.api-key-validation-indicator');
+      if (!indicator) return;
 
-    indicator.textContent = input.value ? (ok ? '✓' : '✕') : '';
-    indicator.classList.toggle('valid',  ok && input.value);
-    indicator.classList.toggle('error', !ok && input.value);
-    input     .classList.toggle('error', !ok && input.value);
+      const ok = isValidKey(input.value, provider);
+
+      indicator.textContent = input.value ? (ok ? '✓' : '✕') : '';
+      indicator.classList.toggle('valid',  ok && input.value);
+      indicator.classList.toggle('error', !ok && input.value);
+      input.classList.toggle('error', !ok && input.value);
+    } catch (err) {
+      console.warn('Error validating API key input:', err);
+    }
   }
 
   #saveToLocalStorage(settingsObj) {
@@ -292,7 +335,7 @@ class SettingsModal {
 
 /* ---------- Singleton instance ---------------------------------------- */
 
-const settingsModal = new SettingsModal();
+let settingsModal = new SettingsModal();
 
 /* ---------- Public API ------------------------------------------------ */
 
@@ -306,8 +349,21 @@ export function updateSettingsModalSelect(model) {
 
 /* Initialize after DOM is ready */
 export function initializeSettingsModal() {
-  document.addEventListener('DOMContentLoaded', () => {
+  console.log('Setting up settings modal initialization...');
+  
+  // Try to initialize immediately if DOM is already loaded
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    console.log('DOM already loaded, initializing now...');
     settingsModal.init();
+  }
+
+  // Also set up the DOMContentLoaded listener as a fallback
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded event fired');
+    if (!settingsModal.isInitialized) {
+      console.log('Modal not yet initialized, doing it now...');
+      settingsModal.init();
+    }
 
     /* buttons that launch the modal */
     document.getElementById('settingsBtn' )?.addEventListener('click', openSettings); // sidebar

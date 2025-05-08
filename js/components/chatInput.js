@@ -452,8 +452,10 @@ async function handleSendMessage() {
         // Call API
         console.log("Calling api.routeApiCall for normal chat...");
         // <<< ADDED: Log the model being passed >>>
-        console.log(`[chatInput.js] Passing model to routeApiCall: ${selectedModelSetting}`);
-        await api.routeApiCall(selectedModelSetting, useWebSearch);
+        console.log("Calling api.routeApiCall for normal chat...");
+        // <<< ADDED: Log the model and user message being passed >>>
+        console.log(`[chatInput.js] Passing model: ${selectedModelSetting}, User Message:`, userMessage);
+        await api.routeApiCall(selectedModelSetting, useWebSearch, userMessage); // Pass userMessage here
 
         // Reset UI State
         if (isImageGenMode && imageGenButton) {
@@ -567,7 +569,8 @@ export function updateInputUIForModel(activeGpt) { // Pass activeGpt config obje
     if (messageInputElement) {
         if (isDeepResearchModeActive) {
             messageInputElement.placeholder = "Enter topic for Deep Research and press Send...";
-        } else if (state.getIsImageGenerationMode() && (isGpt4o || isGpt41 || isGpt45Preview)) {
+        } else if (state.getIsImageGenerationMode()) {
+             // Image generation mode works with any model
              messageInputElement.placeholder = "Enter a prompt to generate an image...";
         } else {
             const modelName = isGemini ? "Gemini" :
@@ -580,11 +583,11 @@ export function updateInputUIForModel(activeGpt) { // Pass activeGpt config obje
 
     // --- UPDATE BUTTON STATES ---
 
-    // Web Search UI - Disabled in Deep Research Mode OR if not GPT-4o/GPT-4.1/GPT-4.5
+    // Web Search UI - Only disabled in Deep Research Mode (now works with all models)
     if (searchButton) {
-        const canUseWebSearch = !isDeepResearchModeActive && (isGpt4o || isGpt41 || isGpt45Preview);
+        const canUseWebSearch = !isDeepResearchModeActive;
         searchButton.disabled = !canUseWebSearch;
-        searchButton.title = canUseWebSearch ? "Toggle Web Search" : (isDeepResearchModeActive ? "Web Search disabled in Deep Research mode" : "Web Search requires GPT-4o, GPT-4.1, or GPT-4.5");
+        searchButton.title = canUseWebSearch ? "Toggle Web Search" : "Web Search disabled in Deep Research mode";
         if (!canUseWebSearch) {
             searchButton.classList.remove('active');
             // Ensure state matches UI if mode changed
@@ -595,11 +598,11 @@ export function updateInputUIForModel(activeGpt) { // Pass activeGpt config obje
         }
     }
 
-    // Image Generation UI - Disabled in Deep Research Mode OR if not GPT-4o/GPT-4.1/GPT-4.5
+    // Image Generation UI - Disabled only in Deep Research Mode (works with any model)
     if (imageGenButton) {
-        const canUseImageGen = !isDeepResearchModeActive && (isGpt4o || isGpt41 || isGpt45Preview);
+        const canUseImageGen = !isDeepResearchModeActive;
         imageGenButton.disabled = !canUseImageGen;
-        imageGenButton.title = canUseImageGen ? "Toggle Image Generation Mode" : (isDeepResearchModeActive ? "Image Generation disabled in Deep Research mode" : "Image Generation requires GPT-4o, GPT-4.1, or GPT-4.5");
+        imageGenButton.title = canUseImageGen ? "Toggle Image Generation Mode" : "Image Generation disabled in Deep Research mode";
         if (!canUseImageGen) {
             imageGenButton.classList.remove('active');
             // Ensure state matches UI if mode changed
@@ -667,7 +670,8 @@ function handleImageGenToggle() {
     imageGenButton?.classList.toggle('active', newState);
     showNotification(`Image Generation Mode: ${newState ? 'ON' : 'OFF'}`, 'info', 1500);
     if (messageInputElement) {
-        messageInputElement.placeholder = newState ? "Enter a prompt to generate an image..." : "Message ChatGPT";
+        // Use a generic placeholder that doesn't mention a specific model
+        messageInputElement.placeholder = newState ? "Enter a prompt to generate an image..." : "Message AI";
     }
 }
 

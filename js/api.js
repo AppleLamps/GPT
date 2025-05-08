@@ -14,7 +14,7 @@ import { escapeHTML } from './utils.js';
 import { fetchGeminiStream, buildGeminiPayloadContents, buildGeminiSystemInstruction, buildGeminiGenerationConfig } from './geminiapi.js';
 // Import the new rendering function
 import { renderImprovedWebSearchResults } from './components/webSearch.js';
-// Import Supabase client
+// Import Supabase client for authentication
 import { supabase } from './supabaseClient.js';
 // Import marked for Grok reasoning parsing
 import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
@@ -24,28 +24,58 @@ import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
 const CHAT_COMPLETIONS_API_URL = 'https://api.openai.com/v1/chat/completions';
 const RESPONSES_API_URL = 'https://api.openai.com/v1/responses';
 const TTS_API_URL = 'https://api.openai.com/v1/audio/speech';
-const IMAGE_GENERATION_API_URL = 'https://api.openai.com/v1/images/generations';
+// const IMAGE_GENERATION_API_URL = 'https://api.openai.com/v1/images/generations'; // Removed, not used
 const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
 
-async function callImageGenerationFunction(prompt, model, images = null) { // Keep parameters
-    console.log(`Calling image generation function via Supabase. Model: ${model}`); // Log the specific model
-    if (!supabase) { /* ... error handling ... */ }
+export async function callImageGenerationFunction(prompt) {
+    console.log(`Calling photo generation function via Supabase Edge Function.`);
 
-    const body = { prompt, model }; // Ensure 'model' is included
-    if (images && Array.isArray(images) && images.length > 0) {
-        body.images = images;
+    // Format the request according to the edge function's expected format
+    // The edge function expects: prompt, width, height, steps, output_format, response_format
+    const body = {
+        prompt: prompt,
+        width: 1024,
+        height: 1024,
+        steps: 30,
+        output_format: "png",
+        response_format: "b64_json"
+    };
+
+    console.log("Request body for photo generation:", JSON.stringify(body, null, 2));
+
+    // Note: The new photo-gen endpoint doesn't support image editing
+    // If this functionality is needed in the future, it will need to be implemented
+
+    try {
+        // Use Supabase client to call the edge function
+        // This will automatically handle the JWT authentication
+        const { data, error: supabaseError } = await supabase.functions.invoke('photo-gen', {
+            body: body
+        });
+
+        console.log("Photo generation response:", data);
+
+        if (supabaseError) {
+            console.error("Supabase function error:", supabaseError);
+            throw new Error(supabaseError.message || "Failed to call photo generation service");
+        }
+
+        if (data && data.error) {
+            console.error("Error returned from photo generation service:", data.error);
+            throw new Error(data.error);
+        }
+
+        // The service returns data in the same format with b64_json
+        if (!data || !data.b64_json) {
+            console.error("Invalid response from photo generation service:", data);
+            throw new Error("Photo generation service returned invalid data");
+        }
+
+        return data;
+    } catch (error) {
+        console.error("Error calling photo generation service:", error);
+        throw error;
     }
-
-    // Ensure the function name here matches your deployed function
-    const { data, error } = await supabase.functions.invoke('generate-image', {
-        body: body
-    });
-
-    // ... (keep existing error handling and response processing for b64_json) ...
-    if (error) { throw new Error(/* ... */); }
-    if (data && data.error) { throw new Error(data.error); }
-    if (!data || !data.b64_json) { throw new Error(/* ... */); }
-    return data;
 }
 
 // Initialize OpenAI client - NO LONGER NEEDED HERE FOR IMAGE GEN
@@ -64,8 +94,9 @@ function getOpenAIClient() {
  * Incorporates active Custom GPT configuration.
  * @param {string} selectedModelSetting - The *default* model setting chosen by the user.
  * @param {boolean} useWebSearch - Whether web search was toggled ON for this message.
+ * @param {object} lastUserMessageEntry - The last user message object.
  */
-export async function routeApiCall(selectedModelSetting, useWebSearch) {
+export async function routeApiCall(selectedModelSetting, useWebSearch, lastUserMessageEntry) {
     const activeConfig = state.getActiveCustomGptConfig();
     const history = state.getChatHistory();
     const isImageGenMode = state.getIsImageGenerationMode();
@@ -77,24 +108,25 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
     let knowledgeContent = "";
     let capabilities = { webSearch: useWebSearch };
 
-    const lastUserMessageEntry = history.filter(m => m.role === 'user').pop();
+    // The lastUserMessageEntry is now passed directly as a parameter.
+    // const lastUserMessageEntry = history.filter(m => m.role === 'user').pop(); // Removed
 
     // Early validation
-    if (!history.length || !lastUserMessageEntry) {
-        console.error("Cannot call API: No user message history found.");
-        showNotification("Please type a message or upload an image first.", 'info');
+    if (!lastUserMessageEntry) { // Modified validation
+        console.error("Cannot call API: User message object not provided.");
+        showNotification("An internal error occurred: User message data is missing.", 'error');
         return;
     }
 
     // Handle image generation mode first
     if (isImageGenMode) {
-        console.log(`Routing to Supabase Edge Function 'generate-image'`);
+        console.log(`Routing to photo generation service via Supabase Edge Function`);
 
-        // Check if Supabase client is available (it should be)
+        // Check if Supabase client is available
         if (!supabase) {
-             console.error("Supabase client is not available. Cannot call Edge Function.");
-             showNotification("Error: Supabase client not initialized. Cannot generate image.", 'error');
-             return;
+            console.error("Supabase client is not available. Cannot call Edge Function.");
+            showNotification("Error: Supabase client not initialized. Cannot generate image.", 'error');
+            return;
         }
 
         // Clear previous image URL state immediately
@@ -106,56 +138,31 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
             return;
         }
 
-        // <<< ADD PLACEHOLDER CLASS >>>
+        // Add placeholder class
         aiMessageElement.classList.add('image-placeholder');
-        showChatInterface(); // <<< ENSURE CHAT IS VISIBLE >>>
-
-        // <<< REMOVE OLD PLACEHOLDER LOGIC (Commented out or deleted) >>>
-        /*
-        // Add placeholder HTML immediately - NO LONGER NEEDED
-        const placeholderHtml = '<div class="image-loading-placeholder"></div>';
-        const contentElement = aiMessageElement.querySelector('.ai-message-content');
-        if (contentElement) {
-            contentElement.innerHTML = placeholderHtml;
-        } else {
-            console.error("Could not find content element to insert placeholder.");
-        }
-        */
-        // No typing indicator needed, placeholder serves this purpose
-        // showTypingIndicator(aiMessageElement);
+        showChatInterface(); // Ensure chat is visible
 
         try {
-            // Call the Supabase Edge Function
-            // <<< REMOVE PLACEHOLDER CLASS >>>
+            // Get the prompt from the last user message
+            const prompt = lastUserMessageEntry.content;
+
+            console.log("Sending photo generation prompt:", prompt);
+
+            // Call the photo generation function
+            const result = await callImageGenerationFunction(prompt);
+
+            // Remove placeholder class
             if (aiMessageElement) aiMessageElement.classList.remove('image-placeholder');
 
-            // Handle errors returned directly by the invoke call (network, function setup errors)
-            if (error) {
-                console.error("Error invoking Supabase function 'generate-image':", error);
-                throw new Error(error.message || "Unknown error invoking Supabase function.");
-            }
+            // Check for the image data in the response
+            if (result && result.b64_json) {
+                // Construct data URL from base64 string
+                const imageUrl = `data:image/png;base64,${result.b64_json}`;
 
-            // Handle errors returned *within* the function's JSON response
-            if (data && data.error) {
-                console.error("Error returned from Supabase function 'generate-image':", data.error);
-                throw new Error(data.error); // Use the error message from the function
-            }
-
-            // Handle successful response with base64 image data
-            if (data && data.b64_json) { // <<< CHANGED: Check for b64_json
-                // <<< CHANGED: Construct data URL from base64 string >>>
-                const imageUrl = `data:image/png;base64,${data.b64_json}`;
-                const revisedPrompt = data.revised_prompt; // Get revised prompt
-
-                console.log("Image generated successfully via Supabase function (Base64).");
+                console.log("Image generated successfully via photo generation service.");
 
                 // Construct final content
                 let finalContent = `<img src="${imageUrl}" alt="Generated image" style="max-width: 100%; border-radius: 6px; display: block; margin-top: 8px;">`;
-                // Optional: Still display revised prompt if desired, just don't save it
-                // if (revisedPrompt) {
-                //     finalContent = `<p>Revised prompt: <em>${escapeHTML(revisedPrompt)}</em></p>` + finalContent;
-                // }
-
 
                 // Finalize the content (this will replace the placeholder)
                 finalizeAIMessageContent(aiMessageElement, finalContent, false); // Pass false for markdown processing
@@ -167,45 +174,42 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
 
                 // Add to history with the image URL
                 console.log("Adding image message to history...");
-                // <<< MODIFY HISTORY SAVING HERE >>>
                 state.addMessageToHistory({
                     role: 'assistant',
                     content: '[Generated Image]', // Content can be minimal or indicate it's an image
-                    generatedImageUrl: imageUrl // <-- Use generatedImageUrl here
+                    generatedImageUrl: imageUrl // Use generatedImageUrl here
                 });
                 console.log("Image message added to history.");
 
             } else {
                 // Handle cases where the function executed but didn't return expected data
-                console.error("Invalid response structure from Supabase function 'generate-image' (missing b64_json or error?):", data);
-                 throw new Error("Function returned invalid data structure.");
+                console.error("Invalid response structure from image generation (missing b64_json):", result);
+                throw new Error("Image generation returned invalid data structure.");
             }
 
-        } catch (error) { // Catches errors thrown above (invoke, data.error, missing data)
-            // <<< REMOVE PLACEHOLDER CLASS (already done before checks, but ensure if error happens earlier) >>>
+        } catch (error) { // Catches errors thrown above
+            // Remove placeholder class if still present
             if (aiMessageElement && aiMessageElement.classList.contains('image-placeholder')) {
                  aiMessageElement.classList.remove('image-placeholder');
             }
 
             // Catch network errors calling the function or errors thrown above
-            console.error("Error during Supabase function call or processing:", error);
-            const errorHtml = `<p class="error-message">Error generating image: ${escapeHTML(error.message || 'Unknown error')}</p>`;
+            console.error("Error during photo generation:", error);
+            const errorHtml = `<p class="error-message">Error generating photo: ${escapeHTML(error.message || 'Unknown error')}</p>`;
+
             // Finalize with error message (this replaces the placeholder)
-            // Ensure aiMessageElement exists before finalizing
             if (aiMessageElement) {
                 finalizeAIMessageContent(aiMessageElement, errorHtml, false); // Pass false for markdown
             } else {
-                 // If the container wasn't even created, maybe show a notification?
                  console.error("Cannot display error in chat, AI message container does not exist.");
             }
 
+            showNotification(`Error generating photo: ${error.message || 'Please check console for details.'}`, 'error');
 
-            // No need for removeTypingIndicator call (handled by placeholder logic)
-            showNotification(`Error generating image: ${error.message || 'Please check console for details.'}`, 'error');
-             // Add error message to history
-             state.addMessageToHistory({
+            // Add error message to history
+            state.addMessageToHistory({
                 role: 'assistant',
-                content: `[Error generating image: ${error.message || 'Unknown error'}]`
+                content: `[Error generating photo: ${error.message || 'Unknown error'}]`
             });
         }
         return; // Stop further processing after handling image generation
@@ -228,39 +232,45 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
         }
     }
 
-    // Perform web search first if requested (works with any model)
+    // When web search is enabled, we'll use GPT-4.1 to handle the complete response
+    // No additional model calls will be made after web search
     if (capabilities.webSearch) {
-        console.log("Web search requested - Starting web search");
-        
+        console.log("Web search requested - Using GPT-4.1 to handle the complete response");
+
         if (!apiKey) {
             showNotification("Error: API key is required for web search.", 'error');
             return;
         }
 
+        // Use gpt-4.1 for web search as per the latest API documentation
+        // This will handle both the search AND the response
         const webSearchRequestBody = {
-            model: finalModel,
+            model: "gpt-4.1",
             input: buildResponsesApiInput(lastUserMessageEntry, knowledgeContent, finalSystemPrompt),
             stream: true,
-            tools: [{ type: "web_search_preview" }]
+            tools: [{
+                type: "web_search_preview",
+                search_context_size: "medium" // Default to medium context size (balanced context, cost, and latency)
+            }],
+            tool_choice: { type: "web_search_preview" } // Force the use of web search for more consistent results
         };
 
-        let webSearchResults = null;
+        console.log("Using gpt-4.1 for web search and response, regardless of selected model:", finalModel);
+
         try {
-            const searchResponse = await fetchResponsesApi(apiKey, webSearchRequestBody, true);
-            webSearchResults = searchResponse?.webSearchResults;
-            if (webSearchResults) {
-                console.log("Web search completed successfully");
-                // Add search results to knowledge content for the main model
-                knowledgeContent = (knowledgeContent ? knowledgeContent + "\n\n" : "") +
-                    "--- Web Search Results ---\n" +
-                    webSearchResults.results.map(r => 
-                        `[${r.title}]\n${r.url}\n${r.content}`
-                    ).join("\n\n") +
-                    "\n--- End Web Search Results ---";
-            }
+            await fetchResponsesApi(apiKey, webSearchRequestBody, true);
+
+            // Reset the web search toggle after processing
+            state.setIsWebSearchEnabled(false);
+            console.log("Web search toggle reset after processing");
+
+            // Return early - no need to call any other model
+            return;
+
         } catch (error) {
             console.error("Web search failed:", error);
             showNotification("Web search failed, continuing with base model response", 'warning');
+            // Continue with normal model call if web search fails
         }
     }
 
@@ -331,8 +341,21 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
             return;
         }
 
+        // Add a special system prompt for Grok when web search results are present
+        let grokSystemPrompt = finalSystemPrompt;
+        const hasWebSearchResults = history.some(msg => msg.isWebSearchResult);
+
+        if (hasWebSearchResults) {
+            grokSystemPrompt = (grokSystemPrompt ? grokSystemPrompt + "\n\n" : "") +
+                "You might see web search results embedded in the chat history as system messages.\n" +
+                "These messages contain factual, up-to-date content retrieved from the web.\n\n" +
+                "Treat any such results as accurate and authoritative.\n" +
+                "Do not contradict, question, or rely on your own knowledge if it conflicts with them.\n" +
+                "Always defer to the web search content when forming your response.";
+        }
+
         // Grok models use Chat Completions API format but with different endpoint
-        const messagesPayload = buildMessagesPayload(history, finalSystemPrompt, knowledgeContent);
+        const messagesPayload = buildMessagesPayload(history, grokSystemPrompt, knowledgeContent);
         const requestBody = {
             model: finalModel,
             messages: messagesPayload,
@@ -350,6 +373,23 @@ export async function routeApiCall(selectedModelSetting, useWebSearch) {
             showNotification("Error: OpenAI API key is required. Please add it in Settings.", 'error');
             return;
         }
+
+        // Add a special system prompt for OpenAI models when web search results are present
+        let openAISystemPrompt = finalSystemPrompt;
+        const hasWebSearchResults = history.some(msg => msg.isWebSearchResult);
+
+        if (hasWebSearchResults) {
+            openAISystemPrompt = (openAISystemPrompt ? openAISystemPrompt + "\n\n" : "") +
+                "You might see web search results embedded in the chat history as system messages.\n" +
+                "These messages contain factual, up-to-date content retrieved from the web.\n\n" +
+                "Treat any such results as accurate and authoritative.\n" +
+                "Do not contradict, question, or rely on your own knowledge if it conflicts with them.\n" +
+                "Always defer to the web search content when forming your response.";
+        }
+
+        // Update finalSystemPrompt with the enhanced version
+        finalSystemPrompt = openAISystemPrompt;
+
         const previousId = state.getPreviousResponseId();
         // Only include temperature for models that support it
         const supportsTemperature = (
@@ -430,8 +470,21 @@ function buildMessagesPayload(history, systemPrompt, knowledgeContent) {
         payload.push({ role: "system", content: systemPrompt });
     }
 
-    // Need to filter out imageData for o3-mini and Grok
-    let historyCopy = history.map(m => ({ role: m.role, content: m.content }));
+    // Create a copy of history, preserving all messages including web search results
+    let historyCopy = history.map(m => {
+        // Always include role and content
+        const messageCopy = { role: m.role, content: m.content };
+
+        // Log web search results for debugging
+        if (m.isWebSearchResult) {
+            console.log("Including web search result in message payload:", m.content.substring(0, 100) + "...");
+        }
+
+        return messageCopy;
+    });
+
+    // Ensure web search results are correctly positioned in the history
+    // They should appear before the last user message and the assistant's response
 
     if (knowledgeContent && historyCopy.length > 0) {
         const lastUserIndex = historyCopy.findLastIndex(m => m.role === 'user');
@@ -440,7 +493,13 @@ function buildMessagesPayload(history, systemPrompt, knowledgeContent) {
             console.log("Knowledge content prepended to last user message for Chat Completions/Grok.");
         } else { console.warn("Could not find user message to prepend knowledge to."); }
     }
+
     payload = payload.concat(historyCopy);
+
+    // Log the final payload for debugging
+    console.log("Final message payload for Grok/Chat Completions:",
+        payload.map(m => ({ role: m.role, contentLength: m.content?.length || 0 })));
+
     return payload;
 }
 
@@ -804,13 +863,42 @@ function processResponsesEvent(line, aiMessageElement, lastItemId, streamHasCont
                 removeTypingIndicator(); // Remove basic indicator once response starts
                 console.log("Response Created Event:", parsed.response?.id);
             }
-            else if (eventType === 'response.tool_use.started' && parsed.tool_use?.type === 'web_search_preview') { console.log("Web search started..."); showTypingIndicator("Searching the web..."); }
-            else if (eventType === 'response.tool_use.output' && parsed.tool_use?.type === 'web_search_preview') {
-                 console.log("Web search finished. Results received:", parsed.tool_use.output);
-                 showTypingIndicator("Thinking..."); // Change back to thinking
-                 updatedWebSearchResults = parsed.tool_use.output; // Store results
+            // Handle web search events according to latest API format
+            else if (parsed.type === 'web_search_call' && parsed.status === 'completed') {
+                console.log("Web search completed with ID:", parsed.id);
+                showTypingIndicator("Processing search results...");
             }
-            else if (eventType === 'response.tool_use.failed' && parsed.tool_use?.type === 'web_search_preview') { console.error("Web search failed:", parsed.error); showTypingIndicator("Thinking..."); showNotification("Web search failed to complete.", "warning"); }
+            else if (parsed.type === 'web_search_call' && parsed.status === 'in_progress') {
+                console.log("Web search in progress...");
+                showTypingIndicator("Searching the web...");
+            }
+            else if (parsed.type === 'message' && parsed.content && parsed.content[0]?.type === 'output_text') {
+                // Check if this message contains web search results (has annotations)
+                if (parsed.content[0].annotations && parsed.content[0].annotations.length > 0) {
+                    console.log("Received message with web search results and citations");
+
+                    // Extract and format web search results from annotations
+                    const citations = parsed.content[0].annotations.filter(a => a.type === 'url_citation');
+                    if (citations.length > 0) {
+                        // Create a structured format for our web search results
+                        updatedWebSearchResults = {
+                            query: lastUserMessageEntry?.content || 'Web Search',
+                            results: citations.map(citation => ({
+                                title: citation.title || 'Web Result',
+                                url: citation.url,
+                                content: parsed.content[0].text.substring(citation.start_index, citation.end_index)
+                            }))
+                        };
+
+                        showTypingIndicator("Thinking..."); // Change back to thinking
+                    }
+                }
+            }
+            else if (eventType === 'response.tool_use.failed' && parsed.tool_use?.type === 'web_search_preview') {
+                console.error("Web search failed:", parsed.error);
+                showTypingIndicator("Thinking...");
+                showNotification("Web search failed to complete.", "warning");
+            }
             else if (eventType === 'response.output_item.added' && parsed.item?.type === 'message') {
                 // Create container but DON'T remove the typing indicator yet (unless web search already finished)
                 if (!updatedAiMessageElement) {
@@ -871,9 +959,19 @@ function processResponsesEvent(line, aiMessageElement, lastItemId, streamHasCont
 /**
  * Renders web search results into the message container.
  * This is called AFTER the stream finishes or when results are received, BEFORE finalizing the main text content.
+ * Updated to handle the latest OpenAI Responses API format with citations.
  */
 function processWebSearchResults(data, messageElement) {
-    if (!data || !messageElement) return;
+    if (!data || !messageElement) {
+        console.warn("processWebSearchResults called with invalid data or message element");
+        return;
+    }
+
+    console.log("Processing web search results:", {
+        hasData: !!data,
+        resultCount: data?.results?.length || 0,
+        query: data?.query
+    });
 
     // First, ensure typing indicator is removed when we display search results
     removeTypingIndicator();
@@ -896,7 +994,38 @@ function processWebSearchResults(data, messageElement) {
     // Prepend the search results to the message content element
     // This ensures results appear *before* the main AI text response.
     contentElement.insertBefore(formattedResultsElement, contentElement.firstChild);
-    console.log("Web search results rendered.");
+
+    // Format web search results to add to chat history as a system message
+    const formattedResults = "--- Web Search Results ---\n" +
+        searchData.results.map(r =>
+            `[${r.title}]\n${r.url}\n${r.content}`
+        ).join("\n\n") +
+        "\n--- End Web Search Results ---";
+
+    // Add search results as a system message in chat history so all models can see it
+    const webSearchMessage = {
+        role: 'system',
+        content: formattedResults,
+        isWebSearchResult: true  // Flag to identify this as web search results
+    };
+
+    state.addMessageToHistory(webSearchMessage);
+
+    // Log the current state of chat history after adding web search results
+    const currentHistory = state.getChatHistory();
+    console.log(`Web search results added to chat history. Current history length: ${currentHistory.length}`);
+    console.log("Web search message added:", {
+        role: webSearchMessage.role,
+        isWebSearchResult: webSearchMessage.isWebSearchResult,
+        contentLength: webSearchMessage.content.length,
+        contentPreview: webSearchMessage.content.substring(0, 100) + "..."
+    });
+
+    // Verify that the web search result is actually in the history
+    const hasWebSearchResults = currentHistory.some(msg => msg.isWebSearchResult);
+    console.log(`Chat history contains web search results: ${hasWebSearchResults}`);
+
+    return webSearchMessage; // Return the message for potential use by caller
 }
 
 
@@ -1145,5 +1274,3 @@ async function fetchGrokCompletions(apiKey, requestBody) {
         removeTypingIndicator();
     }
 }
-
-export { callImageGenerationFunction };
